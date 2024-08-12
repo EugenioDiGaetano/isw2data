@@ -10,7 +10,11 @@ public class Configuration {
 
     private String projectName;
     private String repoPath;
-    private static final String CONFIG_FILE_PATH_TEMPLATE = "/config%s.properties";
+    private String configFilePathTemplate;
+
+    public Configuration(String configFilePathTemplate) {
+        this.configFilePathTemplate = configFilePathTemplate;
+    }
 
     public void loadConfiguration(String[] args) throws Exception {
         String configFilePath;
@@ -20,7 +24,7 @@ public class Configuration {
             configFilePath = getConfigFilePath(configOption);
         } else {
             out.println("Avviando Bookkeeper di default");
-            configFilePath = String.format(CONFIG_FILE_PATH_TEMPLATE, "BOOKKEEPER");
+            configFilePath = String.format(configFilePathTemplate, "BOOKKEEPER");
         }
 
         try (InputStream is = Objects.requireNonNull(Configuration.class.getResource(configFilePath)).openStream()) {
@@ -33,17 +37,15 @@ public class Configuration {
 
     private String getConfigFilePath(String configOption) {
         String configName;
-        switch (configOption) {
-            case "1":
-                out.println("Avviando Syncope");
-                configName = "SYNCOPE";
-                break;
-            default:
-                out.println("Avviando default Bookkeeper");
-                configName = "BOOKKEEPER";
-                break;
+        if (configOption.equals("1")) {
+            out.println("Avviando Syncope");
+            configName = "SYNCOPE";
         }
-        return String.format(CONFIG_FILE_PATH_TEMPLATE, configName);
+        else {
+            out.println("Avviando default Bookkeeper");
+            configName = "BOOKKEEPER";
+        }
+        return String.format(configFilePathTemplate, configName);
     }
 
     public String getProjectName() {
