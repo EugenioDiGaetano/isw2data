@@ -12,16 +12,15 @@ import org.json.JSONObject;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.logging.Logger;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import static java.lang.System.*;
 
 public class JiraController {
-    Logger logger = Logger.getLogger(JiraController.class.getName());
-    private static HashMap<LocalDateTime, String> releaseNames = new HashMap<>();;
-    private static HashMap<LocalDateTime, String> releaseID = new HashMap<>();;
+    private static HashMap<LocalDateTime, String> releaseNames = new HashMap<>();
+    private static HashMap<LocalDateTime, String> releaseID = new HashMap<>();
     private static ArrayList<LocalDateTime> releases = new ArrayList<>();
     private double coldStartProportion;
 
@@ -110,8 +109,8 @@ public class JiraController {
                     fixVersion.getFixTickets().add(ticket);
                 }
             }
-            logger.info("Ticket eliminati: " + deletedTicket);
-            logger.info("Ticket non eliminati: " + fixTickets.size());
+            out.println("Ticket eliminati: " + deletedTicket);
+            out.println("Ticket non eliminati: " + fixTickets.size());
 
             // BOOKKEEPER 47
             // SYNCOPE    107
@@ -247,7 +246,7 @@ public class JiraController {
     public void calculateProportionColdStart() throws IOException {
         List<Double> medium = new ArrayList<>();
         //Calcolo il coldStart sui progetti in ProjName
-        logger.info("Sto calcolando coldStart");
+        out.println("Sto calcolando coldStart");
         for (ProjName proj : ProjName.values()) {
             String project=proj.name();
             List<Release> allReleases = getReleaseInfo(project);
@@ -270,14 +269,14 @@ public class JiraController {
             }
 
             if (numTickets != 0) medium.add(sum / numTickets);
-            logger.info("Propotion del progetto " + proj + " " + (sum/numTickets));
+            out.println("Propotion del progetto " + proj + " " + (sum/numTickets));
 
         }
 
         //ritorna la mediana, cioè l'elemento in posizione 2 dopo averlo ordinato
         medium.sort(Double::compareTo);
         coldStartProportion =  medium.get((ProjName.values().length-1)/2);
-        logger.info("calcolato coldStart = " + coldStartProportion);
+        out.println("calcolato coldStart = " + coldStartProportion);
     }
 
 }

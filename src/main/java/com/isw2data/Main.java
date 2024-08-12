@@ -13,12 +13,11 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.logging.Logger;
+import static java.lang.System.*;
 
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        Logger logger = Logger.getLogger(Main.class.getName());
         String projectName;
         String repoPath;
         String configFilePath;
@@ -26,16 +25,16 @@ public class Main {
 
         if (args.length == 1) {
             String configOption = args[0];
-            if (configOption == "1") {
-                logger.info("Avviando Syncope");
+            if (configOption.equals("1")) {
+                out.println("Avviando Syncope");
                 configFilePath = "/configSYNCOPE.properties";
             }
             else {
-                logger.info("Avviando default Bookkeeper");
+                out.println("Avviando default Bookkeeper");
                 configFilePath = "/configBOOKKEEPER.properties";
             }
         } else {
-            logger.info("Avviando Bookkeeper");
+            out.println("Avviando Bookkeeper");
             configFilePath = "/configBOOKKEEPER.properties";
         }
 

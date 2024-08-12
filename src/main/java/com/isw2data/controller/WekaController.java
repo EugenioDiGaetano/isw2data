@@ -29,14 +29,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import static java.lang.System.*;
 
-import static java.lang.System.out;
 
 public class WekaController {
-    static Logger logger = Logger.getLogger(WekaController.class.getName());
     // List to store evaluation results
     private List<ClassifierEvaluation> evaluations = new ArrayList<>();
+    private final String FilePath = "%s//%s//%s_%d_%s.arff";
 
     // Evaluate a project with multiple classifiers over several releases
     public void evaluateProject(String projectName, int numReleases) throws Exception {
@@ -57,12 +56,12 @@ public class WekaController {
             default -> new RandomForest();
         };
 
-        logger.info("Evaluation for "+classifierName);
+        out.println("Evaluation for "+classifierName);
         //nell'i-esima iterazione del walkForward, il training test contiene fino alla release i, il testing set è costituito dalla release i + 1
         for (int i = 2; i < numReleases; i++) {
             //simple dataset with no feature selection, no balancing
-            String trainingSet = projectName + "//training//" + "training_" + i + "_" + projectName+ ".arff";
-            String testingSet = projectName + "//testing//" + "testing_" + i + "_" + projectName+ ".arff";
+            String trainingSet= String.format(FilePath, projectName, "training","training",i,projectName);
+            String testingSet = String.format(FilePath, projectName, "testing","testing",i,projectName);
             Instances training = ConverterUtils.DataSource.read(trainingSet);
             Instances testing = ConverterUtils.DataSource.read(testingSet);
 
@@ -175,8 +174,8 @@ public class WekaController {
 
     public static void printProbabilities(String projectName, int numReleases) throws Exception {
         Classifier classifier = new RandomForest();
-        String trainingSet = projectName + "//training//" + "training_" + (numReleases-1) + "_" + projectName+ ".arff";
-        String testingSet = projectName + "//testing//" + "testing_" + (numReleases-1) + "_" + projectName+ ".arff";
+        String trainingSet= String.format(FilePath, projectName, "training","training",(numReleases-1),projectName);
+        String testingSet = String.format(FilePath, projectName, "testing","testing",(numReleases-1),projectName);
         Instances training = ConverterUtils.DataSource.read(trainingSet);
         Instances testing = ConverterUtils.DataSource.read(testingSet);
 
@@ -185,7 +184,7 @@ public class WekaController {
         testing.setClassIndex(numAttr - 1);
 
         int numtesting = testing.numInstances();
-        logger.info("There are " + numtesting + " test instances");
+        out.println("There are " + numtesting + " test instances");
 
         classifier.buildClassifier(training);
 

@@ -30,10 +30,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.logging.Logger;
+import static java.lang.System.*;
 
 public class GitController {
-    Logger logger = Logger.getLogger(GitController.class.getName());
     private Repository repo;
     private Git git;
     private List<Release> releases;  //le releases del repository ordinate per releaseDate crescente
@@ -75,13 +74,13 @@ public class GitController {
             for( Ref ref : allRefs ) {
                 revWalk.markStart( revWalk.parseCommit( ref.getObjectId() ));
             }
-            logger.info("Walking all commits starting with " + allRefs.size() + " refs: " + allRefs);
+            out.println("Walking all commits starting with refs:" + allRefs);
             int count = 0;
             for( RevCommit commit : revWalk ) {
                 allCommits.add(commit);
                 count++;
             }
-            logger.info("Had " + count + " commits");
+            out.println("Had " + count + " commits");
         }
 
         return allCommits;
@@ -113,7 +112,7 @@ public class GitController {
                 }
             }
         }
-        logger.info("Settati i commit");
+        out.println("Settati i commit");
 
         setLastCommitFromRelease();
 
@@ -135,7 +134,7 @@ public class GitController {
         while (i.hasNext()) {
             Release currentRelease = i.next();
             if (currentRelease.getAllCommits() == null) {
-                logger.info("Rimossa la release " + currentRelease.getIndex()+" per assenza di commit");
+                out.println("Rimossa la release " + currentRelease.getIndex()+" per assenza di commit");
                 shiftReleaseIndexes(currentRelease.getIndex());
                 i.remove();
             }
@@ -158,7 +157,7 @@ public class GitController {
                 release.setAllClasses(relClasses);
             }
         }
-        logger.info("Settate le classi");
+        out.println("Settate le classi");
 
     }
 
@@ -365,7 +364,7 @@ public class GitController {
                 nocount++;
             }
         }
-        logger.info("Fix commit: " + count +"\t No fix commit: "+ nocount);
+        out.println("Fix commit: " + count +"\t No fix commit: "+ nocount);
     }
 
 
