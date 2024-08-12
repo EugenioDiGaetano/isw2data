@@ -104,7 +104,7 @@ public class TicketBug {
         return fixCommits;
     }
 
-    public void add_fix_commit(RevCommit fix_commit) { fixCommits.add(fix_commit); }
+    public void addFixCommit(RevCommit fixCommit) { fixCommits.add(fixCommit); }
 
     public void setCommits(List<RevCommit> commits) {
         this.fixCommits = commits;

@@ -30,9 +30,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class GitController {
-
+    Logger logger = Logger.getLogger(GitController.class.getName());
     private Repository repo;
     private Git git;
     private List<Release> releases;  //le releases del repository ordinate per releaseDate crescente
@@ -74,13 +75,13 @@ public class GitController {
             for( Ref ref : allRefs ) {
                 revWalk.markStart( revWalk.parseCommit( ref.getObjectId() ));
             }
-            System.out.println("Walking all commits starting with " + allRefs.size() + " refs: " + allRefs);
+            logger.info("Walking all commits starting with " + allRefs.size() + " refs: " + allRefs);
             int count = 0;
             for( RevCommit commit : revWalk ) {
                 allCommits.add(commit);
                 count++;
             }
-            System.out.println("Had " + count + " commits");
+            logger.info("Had " + count + " commits");
         }
 
         return allCommits;
@@ -112,7 +113,7 @@ public class GitController {
                 }
             }
         }
-        System.out.println("Settati i commit");
+        logger.info("Settati i commit");
 
         setLastCommitFromRelease();
 
@@ -134,7 +135,7 @@ public class GitController {
         while (i.hasNext()) {
             Release currentRelease = i.next();
             if (currentRelease.getAllCommits() == null) {
-                System.out.println("Rimossa la release " + currentRelease.getIndex()+" per assenza di commit");
+                logger.info("Rimossa la release " + currentRelease.getIndex()+" per assenza di commit");
                 shiftReleaseIndexes(currentRelease.getIndex());
                 i.remove();
             }
@@ -157,7 +158,7 @@ public class GitController {
                 release.setAllClasses(relClasses);
             }
         }
-        System.out.println("Settate le classi");
+        logger.info("Settate le classi");
 
     }
 
@@ -364,7 +365,7 @@ public class GitController {
                 nocount++;
             }
         }
-        System.out.println("Fix commit: " + count +"\t No fix commit: "+ nocount);
+        logger.info("Fix commit: " + count +"\t No fix commit: "+ nocount);
     }
 
 
@@ -375,7 +376,7 @@ public class GitController {
             if (release.getAllCommits() != null) {
                 for (RevCommit fixCommit : release.getAllCommits()) {
                     if (fixCommit.getFullMessage().contains(fixTicket.getKey() + "]") || fixCommit.getFullMessage().contains(fixTicket.getKey() + ":")) {
-                        fixTicket.add_fix_commit(fixCommit);
+                        fixTicket.addFixCommit(fixCommit);
                         found = true;
                     }
                 }
@@ -420,7 +421,7 @@ public class GitController {
                 //etichetta come buggy le classi modificate dal commit come in queste Releasei
                 Release injectedRelease = ticket.getInjectedVersion();
                 Release fixRelease = ticket.getFixVersion();
-                // setNumFixes(classPaths, fixRelease);
+                setNumFixes(classPaths, fixRelease);
                 if (!classPaths.isEmpty()) {
                     labelClasses(classPaths, injectedRelease, fixRelease);
                 }

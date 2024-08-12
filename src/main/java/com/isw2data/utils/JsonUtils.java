@@ -8,7 +8,11 @@ import java.io.*;
 import java.net.URL;
 import java.nio.charset.Charset;
 
-public class Json_utils {
+public class JsonUtils {
+    private JsonUtils(){
+        throw new IllegalStateException("Utility class");
+    }
+
     public static JSONArray readJsonArrayFromUrl(String url) throws IOException, JSONException {
         try (InputStream is = new URL(url).openStream();
              BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")))) {

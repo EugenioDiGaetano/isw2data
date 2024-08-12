@@ -1,10 +1,8 @@
 package com.isw2data.controller;
 
 
-import static java.lang.System.*;
-
 import com.isw2data.model.TicketBug;
-import com.isw2data.utils.Json_utils;
+import com.isw2data.utils.JsonUtils;
 import com.isw2data.enumeration.ProjName;
 import com.isw2data.model.Release;
 
@@ -14,26 +12,24 @@ import org.json.JSONObject;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.logging.Logger;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 public class JiraController {
-
-    private static HashMap<LocalDateTime, String> releaseNames;
-    private static HashMap<LocalDateTime, String> releaseID;
-    private static ArrayList<LocalDateTime> releases;
+    Logger logger = Logger.getLogger(JiraController.class.getName());
+    private static HashMap<LocalDateTime, String> releaseNames = new HashMap<>();;
+    private static HashMap<LocalDateTime, String> releaseID = new HashMap<>();;
+    private static ArrayList<LocalDateTime> releases = new ArrayList<>();
     private double coldStartProportion;
 
     public List<Release> getReleaseInfo(String projectName) throws IOException {
         String url = "https://issues.apache.org/jira/rest/api/2/project/" + projectName;
-        JSONObject json = Json_utils.readJsonFromUrl(url);
+        JSONObject json = JsonUtils.readJsonFromUrl(url);
         JSONArray versions = json.getJSONArray("versions");
-        releaseNames = new HashMap<>();
-        releaseID = new HashMap<> ();
-        releases = new ArrayList<>();
+
         for (int i = 0; i < versions.length(); i++ ) {
             String relasedate = "";
             String name = "";
@@ -61,8 +57,8 @@ public class JiraController {
             id = Integer.parseInt(releaseID.get(releases.get(i)));
             String name = releaseNames.get(releases.get(i));
             LocalDateTime releaseDate = releases.get(i);
-            Release release_temp = new Release(index, id, name, releaseDate);
-            allReleases.add(release_temp);
+            Release releaseTemp = new Release(index, id, name, releaseDate);
+            allReleases.add(releaseTemp);
         }
 
         return allReleases;
@@ -78,7 +74,9 @@ public class JiraController {
     }
 
     public List<TicketBug> getFixTicket(String projectName, List<Release> allReleases) throws IOException {
-        Integer j, total, i = 0;
+        Integer i = 0;
+        Integer j = 0;
+        Integer total = 0;
         List<TicketBug> fixTickets = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
         do {
@@ -87,7 +85,7 @@ public class JiraController {
                     + projectName + "%22AND%22issueType%22=%22Bug%22AND(%22status%22=%22closed%22OR"
                     + "%22status%22=%22resolved%22)AND%22resolution%22=%22fixed%22&fields=key,resolutiondate,versions,created&startAt="
                     + i.toString() + "&maxResults=" + j.toString();
-            JSONObject json = Json_utils.readJsonFromUrl(url);
+            JSONObject json = JsonUtils.readJsonFromUrl(url);
             JSONArray issues = json.getJSONArray("issues");
             total = json.getInt("total");
             int deletedTicket = 0;
@@ -112,9 +110,8 @@ public class JiraController {
                     fixVersion.getFixTickets().add(ticket);
                 }
             }
-
-            // out.println("Ticket eliminati: " + deletedTicket);
-            // out.println("Ticket non eliminati: " + fixTickets.size());
+            logger.info("Ticket eliminati: " + deletedTicket);
+            logger.info("Ticket non eliminati: " + fixTickets.size());
 
             // BOOKKEEPER 47
             // SYNCOPE    107
@@ -250,9 +247,8 @@ public class JiraController {
     public void calculateProportionColdStart() throws IOException {
         List<Double> medium = new ArrayList<>();
         //Calcolo il coldStart sui progetti in ProjName
-        out.println("Sto calcolando coldStart");
+        logger.info("Sto calcolando coldStart");
         for (ProjName proj : ProjName.values()) {
-            Properties p = new Properties();
             String project=proj.name();
             List<Release> allReleases = getReleaseInfo(project);
             List<TicketBug> tickets = getFixTicket(project, allReleases);
@@ -274,14 +270,14 @@ public class JiraController {
             }
 
             if (numTickets != 0) medium.add(sum / numTickets);
-            System.out.println("Propotion del progetto " + proj + " " + (sum/numTickets));
+            logger.info("Propotion del progetto " + proj + " " + (sum/numTickets));
 
         }
 
         //ritorna la mediana, cioè l'elemento in posizione 2 dopo averlo ordinato
         medium.sort(Double::compareTo);
         coldStartProportion =  medium.get((ProjName.values().length-1)/2);
-        System.out.println("calcolato coldStart = " + coldStartProportion);
+        logger.info("calcolato coldStart = " + coldStartProportion);
     }
 
 }

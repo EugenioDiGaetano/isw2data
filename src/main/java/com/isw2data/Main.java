@@ -13,10 +13,12 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 public class Main {
 
     public static void main(String[] args) throws Exception {
+        Logger logger = Logger.getLogger(Main.class.getName());
         String projectName;
         String repoPath;
         String configFilePath;
@@ -24,18 +26,16 @@ public class Main {
 
         if (args.length == 1) {
             String configOption = args[0];
-            switch (configOption) {
-                case "1":
-                    System.out.println("Avviando Syncope");
-                    configFilePath = "/configSYNCOPE.properties";
-                    break;
-                default:
-                    System.out.println("Avviando default Bookkeeper");
-                    configFilePath = "/configBOOKKEEPER.properties";
-                    break;
+            if (configOption == "1") {
+                logger.info("Avviando Syncope");
+                configFilePath = "/configSYNCOPE.properties";
+            }
+            else {
+                logger.info("Avviando default Bookkeeper");
+                configFilePath = "/configBOOKKEEPER.properties";
             }
         } else {
-            System.out.println("Avviando Bookkeeper");
+            logger.info("Avviando Bookkeeper");
             configFilePath = "/configBOOKKEEPER.properties";
         }
 

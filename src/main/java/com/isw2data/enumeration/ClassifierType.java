@@ -1,5 +1,5 @@
 package com.isw2data.enumeration;
 
 public enum ClassifierType {
-    NaiveBayes, Ibk, RandomForest
+    NAIVE_BAYES, IBK, RANDOM_FOREST
 }

@@ -29,38 +29,37 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
+
 import static java.lang.System.out;
 
 public class WekaController {
-
+    static Logger logger = Logger.getLogger(WekaController.class.getName());
     // List to store evaluation results
     private List<ClassifierEvaluation> evaluations = new ArrayList<>();
 
     // Evaluate a project with multiple classifiers over several releases
     public void evaluateProject(String projectName, int numReleases) throws Exception {
         for (ClassifierType classifierType : ClassifierType.values()) {
-            CrossForwardEvaluations(projectName, classifierType.name(), numReleases);
+            crossForwardEvaluations(projectName, classifierType.name(), numReleases);
         }
         printEvaluationsToCsv(projectName);
-
-        //printProbabilities(projectName, numReleases);
     }
 
-    public void CrossForwardEvaluations(String projectName, String classifierName, int numReleases) throws Exception {
+    public void crossForwardEvaluations(String projectName, String classifierName, int numReleases) throws Exception {
 
         Classifier classifier = switch (classifierName) {
 
-            case "NaiveBayes" -> new NaiveBayes();
+            case "NAIVE_BAYES" -> new NaiveBayes();
 
-            case "Ibk" -> new IBk();
+            case "IBK" -> new IBk();
 
             default -> new RandomForest();
         };
 
-        System.out.println("Evaluation for "+classifierName);
+        logger.info("Evaluation for "+classifierName);
         //nell'i-esima iterazione del walkForward, il training test contiene fino alla release i, il testing set è costituito dalla release i + 1
         for (int i = 2; i < numReleases; i++) {
-
             //simple dataset with no feature selection, no balancing
             String trainingSet = projectName + "//training//" + "training_" + i + "_" + projectName+ ".arff";
             String testingSet = projectName + "//testing//" + "testing_" + i + "_" + projectName+ ".arff";
@@ -74,7 +73,7 @@ public class WekaController {
             classifier.buildClassifier(training);
             Evaluation eval = new Evaluation(testing);
             eval.evaluateModel(classifier, testing);
-            ClassifierEvaluation evaluation = new ClassifierEvaluation(projectName, i, eval ,classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.NONE,1,10);
+            ClassifierEvaluation evaluation = new ClassifierEvaluation(projectName, i, eval ,classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.NONE);
             evaluations.add(evaluation);
 
 
@@ -100,7 +99,7 @@ public class WekaController {
 
             // Salva i risultati della valutazione con feature selection specifica
             ClassifierEvaluation evaluationWithFS = new ClassifierEvaluation(projectName, i, evalWithFS, classifierName,
-                    FeatureSelection.BESTFIRST, Sampling.NONE, CostSensitive.NONE, 1, 10);
+                    FeatureSelection.BESTFIRST, Sampling.NONE, CostSensitive.NONE);
             evaluations.add(evaluationWithFS);
 
             // Applicare oversampling senza selezione delle caratteristiche
@@ -114,7 +113,7 @@ public class WekaController {
             Evaluation evalWithSMOTE = new Evaluation(smoteTraining);
             evalWithSMOTE.evaluateModel(classifier, testing);
             ClassifierEvaluation evaluationWithSMOTE = new ClassifierEvaluation(projectName, i, evalWithSMOTE, classifierName,
-                    FeatureSelection.NONE, Sampling.SMOTE, CostSensitive.NONE, 1, 10);
+                    FeatureSelection.NONE, Sampling.SMOTE, CostSensitive.NONE);
             evaluations.add(evaluationWithSMOTE);
 
             // Applicare oversampling senza selezione delle caratteristiche
@@ -131,7 +130,7 @@ public class WekaController {
             Evaluation overSamplingEval = new Evaluation(testing);
             overSamplingEval.evaluateModel(fcOver, testing);
 
-            ClassifierEvaluation evaluationWithOverSampling = new ClassifierEvaluation(projectName, i, overSamplingEval, classifierName, FeatureSelection.NONE, Sampling.OVERSAMPLING, CostSensitive.NONE, 1, 10);
+            ClassifierEvaluation evaluationWithOverSampling = new ClassifierEvaluation(projectName, i, overSamplingEval, classifierName, FeatureSelection.NONE, Sampling.OVERSAMPLING, CostSensitive.NONE);
             evaluations.add(evaluationWithOverSampling);
 
             // Applicare undersampling senza selezione delle caratteristiche
@@ -146,7 +145,7 @@ public class WekaController {
             Evaluation underSamplingEval = new Evaluation(testing);
             underSamplingEval.evaluateModel(fcUnder, testing);
 
-            ClassifierEvaluation evaluationWithUnderSampling = new ClassifierEvaluation(projectName, i, underSamplingEval, classifierName, FeatureSelection.NONE, Sampling.UNDERSAMPLING, CostSensitive.NONE, 1, 10);
+            ClassifierEvaluation evaluationWithUnderSampling = new ClassifierEvaluation(projectName, i, underSamplingEval, classifierName, FeatureSelection.NONE, Sampling.UNDERSAMPLING, CostSensitive.NONE);
             evaluations.add(evaluationWithUnderSampling);
 
             CostSensitiveClassifier c1 = new CostSensitiveClassifier();
@@ -158,9 +157,9 @@ public class WekaController {
             Evaluation ec1 = new Evaluation(testing, c1.getCostMatrix());
             ec1.evaluateModel(c1, testing);
 
-            ClassifierEvaluation evaluationWithCostSensitive = new ClassifierEvaluation(projectName, i, ec1, classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.COST_SENSITIVE_CLASSIFIER, 1, 10);
+            ClassifierEvaluation evaluationWithCostSensitive = new ClassifierEvaluation(projectName, i, ec1, classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.COST_SENSITIVE_CLASSIFIER);
+            evaluationWithCostSensitive.setCost(1,10);
             evaluations.add(evaluationWithCostSensitive);
-
         }
     }
 
@@ -186,7 +185,7 @@ public class WekaController {
         testing.setClassIndex(numAttr - 1);
 
         int numtesting = testing.numInstances();
-        System.out.println("There are " + numtesting + " test instances");
+        logger.info("There are " + numtesting + " test instances");
 
         classifier.buildClassifier(training);
 

@@ -24,7 +24,7 @@ public class ClassifierEvaluation {
     private CostSensitive costSensitive;
 
 
-    public ClassifierEvaluation(String project, int numRelease, Evaluation evaluation, String classifier, FeatureSelection featureSelection, Sampling sampling, CostSensitive costSensitive, double costFP, double costFN) {
+    public ClassifierEvaluation(String project, int numRelease, Evaluation evaluation, String classifier, FeatureSelection featureSelection, Sampling sampling, CostSensitive costSensitive) {
         this.projName = project;
         this.numTrainingReleases = numRelease;
         this.classifier = classifier;
@@ -39,9 +39,12 @@ public class ClassifierEvaluation {
         this.fp = (int) evaluation.numFalsePositives(0);
         this.tn = (int) evaluation.numTrueNegatives(0);
         this.fn = (int) evaluation.numFalseNegatives(0);
-        this.cost = fp*costFP + fn*costFN;
         this.f1 = evaluation.fMeasure(0);
+        this.cost = 0.0;
+    }
 
+    public void setCost(double costFP, double costFN){
+        this.cost = fp*costFP + fn*costFN;
     }
 
     public String getProjName() {

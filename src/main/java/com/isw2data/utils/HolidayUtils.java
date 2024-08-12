@@ -13,6 +13,10 @@ import java.util.List;
 public class HolidayUtils {
     private static List<LocalDate> holidays = new ArrayList<>();
 
+    private HolidayUtils(){
+        throw new IllegalStateException("Utility class");
+    }
+
     // Recupera le festività per un intervallo di anni fino all'anno corrente
     public static void initializeHolidays(int startYear, String countryCode) {
         int currentYear = Year.now().getValue();
@@ -23,7 +27,7 @@ public class HolidayUtils {
             try {
                 json = new RestTemplate().getForObject(url, String.class);
             } catch (RestClientException e) {
-                throw new RuntimeException("Error fetching holidays: " + e.toString());
+                throw new RestClientException("Error fetching holidays: " + e.toString());
             }
 
             Gson gson = new Gson();
@@ -36,7 +40,7 @@ public class HolidayUtils {
     }
 
     public static long countHolidaysBetween(LocalDateTime startDateTime, LocalDateTime endDateTime, int startYear, String countryCode) {
-        if (holidays.size()==0) {
+        if (holidays.isEmpty()) {
             initializeHolidays(startYear, countryCode);
         }
 
@@ -49,13 +53,6 @@ public class HolidayUtils {
     }
 
     static class PublicHoliday {
-        public String date;
-        public String localName;
-        public String name;
-        public String countryCode;
-        public Boolean fixed;
-        public Boolean global;
-        public String[] counties;
-        public String[] types;
+        private String date;
     }
 }
