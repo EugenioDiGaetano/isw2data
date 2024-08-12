@@ -6,10 +6,8 @@ import com.isw2data.controller.WekaController;
 import com.isw2data.model.TicketBug;
 import com.isw2data.utils.Configuration;
 import com.isw2data.model.Release;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.springframework.web.client.RestClientException;
 
 import java.io.File;
 import java.io.IOException;
