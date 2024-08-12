@@ -35,9 +35,9 @@ import static java.lang.System.*;
 public class WekaController {
     // List to store evaluation results
     private List<ClassifierEvaluation> evaluations = new ArrayList<>();
-    private static final String filePath = "%s//%s//%s_%d_%s.arff";
-    private static final String trainingName = "training";
-    private static final String testingName = "testing";
+    private static final String FILE_PATH = "%s//%s//%s_%d_%s.arff";
+    private static final String TRAINING_NAME = "training";
+    private static final String TESTING_NAME = "testing";
     // Evaluate a project with multiple classifiers over several releases
     public void evaluateProject(String projectName, int numReleases) throws Exception {
         for (ClassifierType classifierType : ClassifierType.values()) {
@@ -61,8 +61,8 @@ public class WekaController {
         //nell'i-esima iterazione del walkForward, il training test contiene fino alla release i, il testing set è costituito dalla release i + 1
         for (int i = 2; i < numReleases; i++) {
             //simple dataset with no feature selection, no balancing
-            String trainingSet= String.format(filePath, projectName, trainingName ,trainingName, i, projectName);
-            String testingSet = String.format(filePath, projectName, testingName, testingName, i, projectName);
+            String trainingSet= String.format(FILE_PATH, projectName, TRAINING_NAME, TRAINING_NAME, i, projectName);
+            String testingSet = String.format(FILE_PATH, projectName, TESTING_NAME, TESTING_NAME, i, projectName);
             Instances training = ConverterUtils.DataSource.read(trainingSet);
             Instances testing = ConverterUtils.DataSource.read(testingSet);
 
@@ -175,8 +175,8 @@ public class WekaController {
 
     public static void printProbabilities(String projectName, int numReleases) throws Exception {
         Classifier classifier = new RandomForest();
-        String trainingSet= String.format(filePath, projectName, trainingName, trainingName,(numReleases-1),projectName);
-        String testingSet = String.format(filePath, projectName, testingName, testingName,(numReleases-1),projectName);
+        String trainingSet= String.format(FILE_PATH, projectName, TRAINING_NAME, TRAINING_NAME,(numReleases-1),projectName);
+        String testingSet = String.format(FILE_PATH, projectName, TESTING_NAME, TESTING_NAME,(numReleases-1),projectName);
         Instances training = ConverterUtils.DataSource.read(trainingSet);
         Instances testing = ConverterUtils.DataSource.read(testingSet);
 

@@ -20,7 +20,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         String projectName;
         String repoPath;
-        String configFilePath;
+        String configFilePath = "/configBOOKKEEPER.properties";
         Properties p = new Properties();
 
         if (args.length == 1) {
@@ -31,11 +31,9 @@ public class Main {
             }
             else {
                 out.println("Avviando default Bookkeeper");
-                configFilePath = "/configBOOKKEEPER.properties";
             }
         } else {
             out.println("Avviando Bookkeeper");
-            configFilePath = "/configBOOKKEEPER.properties";
         }
 
         try (InputStream is = (Objects.requireNonNull(Main.class.getResource(configFilePath))).openStream()) {
