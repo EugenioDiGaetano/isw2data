@@ -1,5 +1,6 @@
 package com.isw2data.utils;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 import java.util.Properties;
@@ -16,7 +17,7 @@ public class Configuration {
         this.configFilePathTemplate = configFilePathTemplate;
     }
 
-    public void loadConfiguration(String[] args) throws Exception {
+    public void loadConfiguration(String[] args) throws IOException {
         String configFilePath;
 
         if (args.length == 1) {
