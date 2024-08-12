@@ -20,20 +20,23 @@ public class Main {
     public static void main(String[] args) throws Exception {
         String projectName;
         String repoPath;
-        String configFilePath = "/configBOOKKEEPER.properties";
+        String configFilePath;
+        String configFilePaths = "/config%S.properties";
         Properties p = new Properties();
 
         if (args.length == 1) {
             String configOption = args[0];
             if (configOption.equals("1")) {
                 out.println("Avviando Syncope");
-                configFilePath = "/configSYNCOPE.properties";
+                configFilePath = String.format(configFilePaths, "SYNCOPE");
             }
             else {
                 out.println("Avviando default Bookkeeper");
+                configFilePath = String.format(configFilePaths, "BOOKKEEPER");
             }
         } else {
             out.println("Avviando Bookkeeper");
+            configFilePath = String.format(configFilePaths, "BOOKKEEPER");
         }
 
         try (InputStream is = (Objects.requireNonNull(Main.class.getResource(configFilePath))).openStream()) {
