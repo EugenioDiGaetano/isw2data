@@ -5,7 +5,7 @@ import com.isw2data.enumeration.CostSensitive;
 import com.isw2data.enumeration.FeatureSelection;
 import com.isw2data.model.ClassifierEvaluation;
 import com.isw2data.enumeration.Sampling;
-import com.isw2data.utils.ClassifierType;
+import com.isw2data.enumeration.ClassifierType;
 
 import weka.attributeSelection.AttributeSelection;
 import weka.attributeSelection.CfsSubsetEval;

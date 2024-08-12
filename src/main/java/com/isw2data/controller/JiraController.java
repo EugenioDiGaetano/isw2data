@@ -5,7 +5,7 @@ import static java.lang.System.*;
 
 import com.isw2data.model.TicketBug;
 import com.isw2data.utils.Json_utils;
-import com.isw2data.utils.ProjName;
+import com.isw2data.enumeration.ProjName;
 import com.isw2data.model.Release;
 
 import org.json.JSONArray;

@@ -30,7 +30,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import static java.lang.System.*;
 
 public class GitController {
 
@@ -116,36 +115,7 @@ public class GitController {
         System.out.println("Settati i commit");
 
         setLastCommitFromRelease();
-        /*
-        if (oldestCommit != null && newestCommit != null) {
 
-            midpointDate = Utils.convertTime((oldestCommit.getCommitTime()+((newestCommit.getCommitTime() - oldestCommit.getCommitTime()) / 2)));
-            System.out.println("Midpoint Date: " + midpointDate);
-            System.out.println("Old: " + Utils.convertTime(oldestCommit.getCommitTime()));
-            System.out.println("Last: " + Utils.convertTime(newestCommit.getCommitTime()));
-
-            // Trova l'ultima release prima della data intermedia
-            Release lastReleaseBeforeMidpoint = null;
-            for (Release release : releases) {
-                if (release.getReleaseDate().isBefore(midpointDate)) {
-                    lastReleaseBeforeMidpoint = release;
-                }
-            }
-            out.println("PRENDO LE PRIME: "+ lastReleaseBeforeMidpoint.getIndex());
-        }
-        */
-        /*
-        // Commit classification
-        int sum = 0;
-        for (int i = 0; i < releases.size(); i++) {
-            List<RevCommit> commitss = releases.get(i).getAllCommits();
-            int temp = (commitss != null) ? commitss.size() : 0;
-            // Stampa l'indice della release e il numero di commit
-            out.println(releases.get(i).getIndex() + " " + temp +" DATA: "+releases.get(i).getReleaseDate() );
-            sum += temp;
-        }
-        out.println("Tot2:  " + sum);
-        */
     }
 
     //essendo i commit ordinati per commitTime decrescente (dal più recente), l'ultimo commit di ogni Releasee è il primo della lista
@@ -417,9 +387,7 @@ public class GitController {
 
 
     private void setBuggyClassesWalkForward(int index) throws GitAPIException, IOException {
-        //index rappresenta l'indice della release su cui pongo il punto di osservazione (cioè rispetto a cui etichetto le classi)
-        //considera solo il ticket con index della fix <= index Release attuale (cioè esistenti rispetto al punto di osservazione fissato)
-        for (TicketBug ticket : tickets) {
+           for (TicketBug ticket : tickets) {
             //scarta i ticket che hanno IV = FV, perché siamo interessati solo ai difetti post-release (IV<FV)
             if (ticket.getFixVersion().getIndex() > index || ticket.getInjectedVersion().getId() == ticket.getFixVersion().getId())
                 continue;
@@ -490,27 +458,9 @@ public class GitController {
     private void deleteLastReleases() {
         int numReleases = releases.size();
         releases.removeIf(currentRelease -> currentRelease.getIndex() > numReleases / 2);
-        // if (releases.removeIf(currentRelease -> currentRelease.getIndex() == 1)) shiftReleaseIndexes(1);
-
-        //out.println(releases.get(0).getReleaseDate());
-        //for (Release diff : releases) {
-            //out.println(Utils.convertTime(diff.getLastCommit().getCommitTime()));
-        //}
-
-        //out.println(Utils.convertTime(releases.get(releases.size()-1).getLastCommit().getCommitTime()));
-        //out.println(releases.get(releases.size()).getLastCommit());
-
     }
 
     private void printCsvArffWalkForward(String projName) throws IOException, GitAPIException {
-        FileWriter trainingWriterCsv = null;
-        FileWriter trainingWriterArff = null;
-
-        FileWriter testingWriterCsv = null;
-        FileWriter testingWriterArff = null;
-
-        setBuggyClassesWalkForward(1);
-
         //per ridurre lo snoring si considerano solo metà delle release
         //crea due csv per ogni release del progetto (a partire dalla seconda release), uno conterrà il set di dati per il training, l'altro per il setting, secondo un approccio walkForward
         for (int i = 2; i < releases.size() / 2; i++) { //l'indice i tiene traccia della creazione di training e testing set usati nell'i-esima iterazione del walkForward
@@ -518,8 +468,8 @@ public class GitController {
             String arffName = projName + "//training//" + "training_" + i + "_" + projName+ ".arff";
 
             setBuggyClassesWalkForward(i);
-            printTrainingSet(trainingWriterCsv, trainingName, i);
-            writeArffTraining(trainingWriterArff, arffName,i);
+            printCsvTrainingSet(trainingName, i);
+            writeArffTraining(arffName,i);
         }
 
         setBuggyClassesWalkForward(releases.size() - 1);
@@ -528,12 +478,13 @@ public class GitController {
             String testingName = projName + "//testing//" + "testing_" + i + "_" + projName+ ".csv";
             String arffName = projName + "//testing//" + "testing_" + i + "_" + projName+ ".arff";
 
-            printTestingSet(testingWriterCsv, testingName, i);
-            writeArffTesting(testingWriterArff  ,arffName,i);
+            printCsvTestingSet(testingName, i);
+            writeArffTesting(arffName,i);
         }
     }
 
-    private void printTrainingSet(FileWriter trainingWriter, String trainingName, int i) throws IOException {
+    private void printCsvTrainingSet(String trainingName, int i) throws IOException {
+        FileWriter trainingWriter = null;
         try {
             trainingWriter = new FileWriter(trainingName);
             trainingWriter.append("LOC,LOC_touched,NR,NFix,NAuth,LOC_added,MAX_LOC_added,Churn,MAX_Churn,AVG_Churn,AVG_Holiday,Buggy");
@@ -572,7 +523,9 @@ public class GitController {
         }
     }
 
-    private void printTestingSet(FileWriter testingWriter, String testingName, int i) throws IOException {
+    private void printCsvTestingSet(String testingName, int i) throws IOException {
+        FileWriter testingWriter = null;
+
         try {
             testingWriter = new FileWriter(testingName);
             testingWriter.append("LOC,LOC_touched,NR,NFix,NAuth,LOC_added,MAX_LOC_added,Churn,MAX_Churn,AVG_Churn,AVG_Holiday,Buggy");
@@ -662,9 +615,9 @@ public class GitController {
     }
 
 
-    private void writeArffTesting(FileWriter fileWriter, String filename, int i) throws IOException{
+    private void writeArffTesting(String filename, int i) throws IOException{
         String[] parts = filename.split("\\.");
-
+        FileWriter fileWriter = null;
         //Name of CSV for output
         try {
             fileWriter = new FileWriter(filename);
@@ -716,9 +669,9 @@ public class GitController {
         }
     }
 
-    private void writeArffTraining(FileWriter fileWriter, String filename, int i) throws IOException{
+    private void writeArffTraining(String filename, int i) throws IOException{
         String[] parts = filename.split("\\.");
-
+        FileWriter fileWriter = null;
         //Name of CSV for output
         try {
             fileWriter = new FileWriter(filename);

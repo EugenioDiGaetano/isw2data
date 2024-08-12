@@ -16,8 +16,6 @@ public class HolidayUtils {
     // Recupera le festività per un intervallo di anni fino all'anno corrente
     public static void initializeHolidays(int startYear, String countryCode) {
         int currentYear = Year.now().getValue();
-        //System.out.println(holidays.size());
-        //System.out.println("Fetching holidays from " + startYear + " to " + currentYear + " in " + countryCode);
 
         for (int year = startYear; year <= currentYear; year++) {
             String url = String.format("https://date.nager.at/api/v3/publicholidays/%d/%s", year, countryCode);
