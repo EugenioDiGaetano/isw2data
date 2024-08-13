@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.util.Objects;
 import java.util.Properties;
 
-import static java.lang.System.out;
+import static java.lang.System.*;
 
 /**
  * Gestisce la configurazione del progetto, caricando le impostazioni da un file di configurazione.

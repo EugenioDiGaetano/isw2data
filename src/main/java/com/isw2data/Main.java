@@ -13,6 +13,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import static java.lang.System.*;
+
 /**
  * Classe principale per l'esecuzione dell'applicazione.
  */
@@ -58,11 +60,11 @@ public class Main {
 
         } catch (IOException e) {
             // Gestisce eventuali errori di input/output e fornisce un messaggio di errore dettagliato
-            System.err.println("Errore IO: " + e.getMessage());
+            out.println("Errore IO: " + e.getMessage());
             System.exit(1);
         } catch (Exception e) {
             // Gestisce eventuali altri tipi di eccezioni e fornisce un messaggio di errore dettagliato
-            System.err.println("Errore: " + e.getMessage());
+            out.println("Errore: " + e.getMessage());
             System.exit(1);
         }
     }
