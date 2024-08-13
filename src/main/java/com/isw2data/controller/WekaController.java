@@ -1,6 +1,5 @@
 package com.isw2data.controller;
 
-
 import com.isw2data.enumeration.CostSensitive;
 import com.isw2data.enumeration.FeatureSelection;
 import com.isw2data.model.ClassifierEvaluation;
@@ -29,16 +28,17 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 import static java.lang.System.*;
 
-
 public class WekaController {
-    // List to store evaluation results
+    // Lista per memorizzare i risultati delle valutazioni
     private List<ClassifierEvaluation> evaluations = new ArrayList<>();
     private static final String FILE_PATH = "%s//%s//%s_%d_%s.arff";
     private static final String TRAINING_NAME = "training";
     private static final String TESTING_NAME = "testing";
-    // Evaluate a project with multiple classifiers over several releases
+
+    // Valuta un progetto con più classificatori su diverse release
     public void evaluateProject(String projectName, int numReleases) throws Exception {
         for (ClassifierType classifierType : ClassifierType.values()) {
             crossForwardEvaluations(projectName, classifierType.name(), numReleases);
@@ -46,22 +46,20 @@ public class WekaController {
         printEvaluationsToCsv(projectName);
     }
 
+    // Esegue la valutazione incrociata "forward" per un progetto
     public void crossForwardEvaluations(String projectName, String classifierName, int numReleases) throws Exception {
 
         Classifier classifier = switch (classifierName) {
-
             case "NAIVE_BAYES" -> new NaiveBayes();
-
             case "IBK" -> new IBk();
-
             default -> new RandomForest();
         };
 
-        out.println("Evaluation for "+classifierName);
-        //nell'i-esima iterazione del walkForward, il training test contiene fino alla release i, il testing set è costituito dalla release i + 1
+        out.println("Evaluation for " + classifierName);
+
+        // Nell'i-esima iterazione del walkForward, il training set contiene fino alla release i, il testing set è costituito dalla release i + 1
         for (int i = 2; i < numReleases; i++) {
-            //simple dataset with no feature selection, no balancing
-            String trainingSet= String.format(FILE_PATH, projectName, TRAINING_NAME, TRAINING_NAME, i, projectName);
+            String trainingSet = String.format(FILE_PATH, projectName, TRAINING_NAME, TRAINING_NAME, i, projectName);
             String testingSet = String.format(FILE_PATH, projectName, TESTING_NAME, TESTING_NAME, i, projectName);
             Instances training = ConverterUtils.DataSource.read(trainingSet);
             Instances testing = ConverterUtils.DataSource.read(testingSet);
@@ -73,18 +71,19 @@ public class WekaController {
             classifier.buildClassifier(training);
             Evaluation eval = new Evaluation(testing);
             eval.evaluateModel(classifier, testing);
-            ClassifierEvaluation evaluation = new ClassifierEvaluation(projectName, i, eval ,classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.NONE);
-            evaluations.add(evaluation);
 
+            ClassifierEvaluation evaluation = new ClassifierEvaluation(projectName, i, eval, classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.NONE);
+            evaluations.add(evaluation);
 
             // Esegui la selezione delle caratteristiche
             AttributeSelection featureSelection = new AttributeSelection();
             CfsSubsetEval cfsEvaluator = new CfsSubsetEval(); // Usando CfsSubsetEval
             GreedyStepwise search = new GreedyStepwise();
-
             search.setSearchBackwards(false);
+
             featureSelection.setEvaluator(cfsEvaluator);
             featureSelection.setSearch(search);
+
             // Applica la selezione delle caratteristiche al set di training
             featureSelection.SelectAttributes(training);
             Instances reducedTraining = featureSelection.reduceDimensionality(training);
@@ -104,7 +103,6 @@ public class WekaController {
 
             // Applicare oversampling senza selezione delle caratteristiche
             SMOTE smote = new SMOTE();
-            // Applica SMOTE al set di training
             smote.setInputFormat(training);
             Instances smoteTraining = Filter.useFilter(training, smote);
 
@@ -148,9 +146,10 @@ public class WekaController {
             ClassifierEvaluation evaluationWithUnderSampling = new ClassifierEvaluation(projectName, i, underSamplingEval, classifierName, FeatureSelection.NONE, Sampling.UNDERSAMPLING, CostSensitive.NONE);
             evaluations.add(evaluationWithUnderSampling);
 
+            // Applicare il classificatore cost-sensitive
             CostSensitiveClassifier c1 = new CostSensitiveClassifier();
             c1.setClassifier(classifier);
-            c1.setCostMatrix(createCostMatrix(1, 10)); // Creare una matrice dei costi, dove puoi specificare i costi per FP e FN
+            c1.setCostMatrix(createCostMatrix(1, 10)); // Crea una matrice dei costi
             c1.setMinimizeExpectedCost(true); // Minimizza il costo atteso
             c1.buildClassifier(training);
 
@@ -158,13 +157,13 @@ public class WekaController {
             ec1.evaluateModel(c1, testing);
 
             ClassifierEvaluation evaluationWithCostSensitive = new ClassifierEvaluation(projectName, i, ec1, classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.COST_SENSITIVE_CLASSIFIER);
-            evaluationWithCostSensitive.setCost(1,10);
+            evaluationWithCostSensitive.setCost(1, 10);
             evaluations.add(evaluationWithCostSensitive);
         }
     }
 
-    private CostMatrix createCostMatrix(double weightFalsePositive, double
-            weightFalseNegative) {
+    // Crea una matrice dei costi con pesi specifici per FP e FN
+    private CostMatrix createCostMatrix(double weightFalsePositive, double weightFalseNegative) {
         CostMatrix costMatrix = new CostMatrix(2);
         costMatrix.setCell(0, 0, 0.0);
         costMatrix.setCell(1, 0, weightFalsePositive);
@@ -173,10 +172,11 @@ public class WekaController {
         return costMatrix;
     }
 
+    // Stampa le probabilità di classificazione
     public static void printProbabilities(String projectName, int numReleases) throws Exception {
         Classifier classifier = new RandomForest();
-        String trainingSet= String.format(FILE_PATH, projectName, TRAINING_NAME, TRAINING_NAME,(numReleases-1),projectName);
-        String testingSet = String.format(FILE_PATH, projectName, TESTING_NAME, TESTING_NAME,(numReleases-1),projectName);
+        String trainingSet = String.format(FILE_PATH, projectName, TRAINING_NAME, TRAINING_NAME, (numReleases - 1), projectName);
+        String testingSet = String.format(FILE_PATH, projectName, TESTING_NAME, TESTING_NAME, (numReleases - 1), projectName);
         Instances training = ConverterUtils.DataSource.read(trainingSet);
         Instances testing = ConverterUtils.DataSource.read(testingSet);
 
@@ -189,55 +189,38 @@ public class WekaController {
 
         classifier.buildClassifier(training);
 
-        // Loop over each test instance.
+        // Loop su ogni istanza del set di test
         for (int i = 0; i < numtesting; i++) {
-            // Get the true class label from the instance's own classIndex.
-            //ritorna il valore che l'istanza i-esima ha nel test set
-            String trueClassLabel =
-                    testing.instance(i).toString(testing.classIndex());
+            // Ottieni l'etichetta di classe reale dall'indice di classe dell'istanza
+            String trueClassLabel = testing.instance(i).toString(testing.classIndex());
 
-            // Make the prediction here.
-            double predictionIndex =
-                    classifier.classifyInstance(testing.instance(i));
+            // Effettua la previsione
+            double predictionIndex = classifier.classifyInstance(testing.instance(i));
 
-            // Get the predicted class label from the predictionIndex.
-            String predictedClassLabel =
-                    testing.classAttribute().value((int) predictionIndex);
+            // Ottieni l'etichetta di classe prevista dall'indice di previsione
+            String predictedClassLabel = testing.classAttribute().value((int) predictionIndex);
 
-            // Get the prediction probability distribution.
-            //ritorna la probabilità che l'instanza i-esima appartenga a ciascuna delle classi possibili (in questo caso 2)
-            double[] predictionDistribution =
-                    classifier.distributionForInstance(testing.instance(i));
+            // Ottieni la distribuzione delle probabilità di previsione
+            double[] predictionDistribution = classifier.distributionForInstance(testing.instance(i));
 
-            // Print out the true label, predicted label, and the distribution.
+            // Stampa l'etichetta reale, l'etichetta prevista e la distribuzione
             out.printf("%5d: true=%-10s, predicted=%-10s, distribution=",
                     i, trueClassLabel, predictedClassLabel);
 
-            // Loop over all the prediction labels in the distribution.
-            //in questo caso abbiamo due possibili classi quindi due probabilità
-            for (int predictionDistributionIndex = 0;
-                 predictionDistributionIndex < predictionDistribution.length;
-                 predictionDistributionIndex++) {
-                // Get this distribution index's class label.
-                String predictionDistributionIndexAsClassLabel =
-                        testing.classAttribute().value(
-                                predictionDistributionIndex);
+            // Loop su tutte le etichette di previsione nella distribuzione
+            for (int predictionDistributionIndex = 0; predictionDistributionIndex < predictionDistribution.length; predictionDistributionIndex++) {
+                String predictionDistributionIndexAsClassLabel = testing.classAttribute().value(predictionDistributionIndex);
+                double predictionProbability = predictionDistribution[predictionDistributionIndex];
 
-                // Get the probability.
-                double predictionProbability =
-                        predictionDistribution[predictionDistributionIndex];
-
-                out.printf(" [%10s : %6.3f] ",
-                        predictionDistributionIndexAsClassLabel,
-                        predictionProbability);
+                out.printf(" [%10s : %6.3f] ", predictionDistributionIndexAsClassLabel, predictionProbability);
             }
         }
     }
 
+    // Stampa le valutazioni su CSV
     public void printEvaluationsToCsv(String projName) throws IOException {
         FileWriter fileWriter = null;
-        //Name of CSV for output
-        String outname = projName + "//evaluations"+projName+".csv";
+        String outname = projName + "//evaluations" + projName + ".csv";
         try {
             fileWriter = new FileWriter(outname);
             fileWriter.append("Dataset, #TrainingReleases, Classifier, FeatureSelection, Balancing, CostSensitive, TruePositive, FalsePositive, TrueNegative, FalseNegative, Cost, Precision, Recall, AUC, Kappa, FMeasure");
@@ -280,5 +263,4 @@ public class WekaController {
             if (fileWriter != null) fileWriter.close();
         }
     }
-
 }

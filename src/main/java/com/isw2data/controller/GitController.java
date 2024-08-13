@@ -1,6 +1,5 @@
 package com.isw2data.controller;
 
-
 import com.isw2data.utils.Utils;
 import com.isw2data.utils.HolidayUtils;
 import com.isw2data.model.TicketBug;
@@ -35,18 +34,19 @@ import static java.lang.System.*;
 public class GitController {
     private Repository repo;
     private Git git;
-    private List<Release> releases;  //le releases del repository ordinate per releaseDate crescente
-    private List<TicketBug> tickets;    //i ticket su Jira associati al repository
+    private List<Release> releases;  // Le release del repository ordinate per data di rilascio crescente
+    private List<TicketBug> tickets;  // I ticket su Jira associati al repository
     private static final String CLASS_PATH = ".java";
     private static final String TEST_DIR = "/test/";
 
     public GitController(Repository repo, List<Release> releases, List<TicketBug> tickets) {
         this.repo = repo;
-        git = new Git(repo);
+        this.git = new Git(repo);
         this.releases = releases;
         this.tickets = tickets;
     }
 
+    // Crea il dataset per un progetto specifico
     public void createDataset(String projectName) throws GitAPIException, IOException {
         List<RevCommit> commits = getCommitsFromMaster();
 
@@ -61,22 +61,18 @@ public class GitController {
         printDataset(projectName);
     }
 
-
-
-    //recupera tutti i commit di tutti i branch della repository corrente
+    // Recupera tutti i commit di tutti i branch del repository corrente
     public List<RevCommit> getAllCommits() throws IOException {
-
         Collection<Ref> allRefs = repo.getRefDatabase().getRefs();
         List<RevCommit> allCommits = new ArrayList<>();
 
-        // a RevWalk allows to walk over commits based on some filtering that is defined
         try (RevWalk revWalk = new RevWalk(repo)) {
-            for( Ref ref : allRefs ) {
-                revWalk.markStart( revWalk.parseCommit( ref.getObjectId() ));
+            for (Ref ref : allRefs) {
+                revWalk.markStart(revWalk.parseCommit(ref.getObjectId()));
             }
-            out.println("Walking all commits starting with refs:" + allRefs);
+            out.println("Walking all commits starting with refs: " + allRefs);
             int count = 0;
-            for( RevCommit commit : revWalk ) {
+            for (RevCommit commit : revWalk) {
                 allCommits.add(commit);
                 count++;
             }
@@ -86,9 +82,8 @@ public class GitController {
         return allCommits;
     }
 
-    // use the following instead to list commits on head branch
+    // Recupera i commit dal branch master
     private List<RevCommit> getCommitsFromMaster() throws IOException, GitAPIException {
-
         List<RevCommit> commitsFromHead = new ArrayList<>();
         ObjectId branchId = this.repo.resolve("HEAD");
         Iterable<RevCommit> commits = this.git.log().add(branchId).call();
@@ -99,56 +94,54 @@ public class GitController {
         return commitsFromHead;
     }
 
-    //assegna i commit alla release di appartenenza
+    // Assegna i commit alle release di appartenenza
     private void assignCommitsToReleases(List<RevCommit> commits) {
-
         for (RevCommit commit : commits) {
             LocalDateTime commitTime = Utils.convertTime(commit.getCommitTime());
 
-            for (int i = 0; i<releases.size(); i++) {
+            for (int i = 0; i < releases.size(); i++) {
                 if (releases.get(i).getReleaseDate().isAfter(commitTime)) {
                     releases.get(i).addCommit(commit);
                     break;
                 }
             }
         }
-        out.println("Settati i commit");
+        out.println("I commit sono stati assegnati alle release");
 
         setLastCommitFromRelease();
-
     }
 
-    //essendo i commit ordinati per commitTime decrescente (dal più recente), l'ultimo commit di ogni Releasee è il primo della lista
+    // Imposta l'ultimo commit di ogni release (l'ultimo commit è il primo nella lista ordinata per data)
     private void setLastCommitFromRelease() {
         for (Release release : releases) {
             List<RevCommit> commits = release.getAllCommits();
-            if (commits != null) {
+            if (commits != null && !commits.isEmpty()) {
                 release.setLastCommit(commits.get(0));
             }
         }
     }
 
-    //verifica la presenza di release con zero commit associati, e, se presenti, elimina le release vuote e shifta gli indici delle release
+    // Verifica la presenza di release senza commit e le rimuove se vuote
     private void checkEmptyReleases() {
-        Iterator<Release> i = releases.iterator();
-        while (i.hasNext()) {
-            Release currentRelease = i.next();
-            if (currentRelease.getAllCommits() == null) {
-                out.println("Rimossa la release " + currentRelease.getIndex()+" per assenza di commit");
+        Iterator<Release> iterator = releases.iterator();
+        while (iterator.hasNext()) {
+            Release currentRelease = iterator.next();
+            if (currentRelease.getAllCommits() == null || currentRelease.getAllCommits().isEmpty()) {
+                out.println("Rimossa la release " + currentRelease.getIndex() + " per assenza di commit");
                 shiftReleaseIndexes(currentRelease.getIndex());
-                i.remove();
+                iterator.remove();
             }
         }
     }
 
+    // Sposta gli indici delle release successivi a quello rimosso
     private void shiftReleaseIndexes(int index) {
         for (Release release : releases) {
             if (release.getIndex() > index) release.setIndex(release.getIndex() - 1);
         }
     }
 
-    //assegna a ogni Releasee le classi presenti in quella Releasee (con il corrispettivo stato di queste classi in quella Releasee)
-    //in pratica recupera lo stato del repository in una certa Releasee
+    // Assegna le classi presenti in ogni release
     private void assignClassesToReleases() throws IOException {
         for (Release release : releases) {
             RevCommit lastCommit = release.getLastCommit();
@@ -157,45 +150,44 @@ public class GitController {
                 release.setAllClasses(relClasses);
             }
         }
-        out.println("Settate le classi");
-
+        out.println("Le classi sono state assegnate alle release");
     }
 
-
-    //recupera le classi appartenenti al repository al momento del commit indicato
+    // Recupera le classi del repository al momento del commit
     private Map<String, Class> getClasses(RevCommit commit, Release release) throws IOException {
-
-        //recupera tutti i files presenti nel repository al momento del commit indicato
         RevTree tree = commit.getTree();
         Map<String, Class> allClasses = new HashMap<>();
 
-        //il TreeWalk mi permette di navigare tra questi file
-        TreeWalk treeWalk = new TreeWalk(this.repo);
-        treeWalk.addTree(tree);
-        treeWalk.setRecursive(true);
+        try (TreeWalk treeWalk = new TreeWalk(this.repo)) {
+            treeWalk.addTree(tree);
+            treeWalk.setRecursive(true);
 
-        while(treeWalk.next()) {
-            //considera solo le classi java (esludendo le classi di test)
-            if (treeWalk.getPathString().contains(CLASS_PATH) && !treeWalk.getPathString().contains(TEST_DIR)) {
-                allClasses.put(treeWalk.getPathString(), new Class(treeWalk.getPathString(), new String(this.repo.open(treeWalk.getObjectId(0)).getBytes(), StandardCharsets.UTF_8), release));
+            while (treeWalk.next()) {
+                // Considera solo i file Java (escludendo i file di test)
+                if (treeWalk.getPathString().contains(CLASS_PATH) && !treeWalk.getPathString().contains(TEST_DIR)) {
+                    allClasses.put(treeWalk.getPathString(), new Class(
+                            treeWalk.getPathString(),
+                            new String(this.repo.open(treeWalk.getObjectId(0)).getBytes(), StandardCharsets.UTF_8),
+                            release
+                    ));
+                }
             }
         }
 
-        treeWalk.close();
         return allClasses;
     }
 
+    // Calcola le metriche per ogni release
     private void calculateMetrics() throws GitAPIException, IOException {
         for (Release release : releases) {
-            //calcola le metriche (LOC, churn...) per le classi in ogni release
             calculateLoc(release);
             calculateAllLocMetrics(release);
             calculatenAuth(release);
             personalMetrics(release);
         }
-
     }
 
+    // Calcola il numero di giorni festivi tra due release
     public void personalMetrics(Release release) {
         if (release.getIndex() > 1) {
             LocalDateTime currentReleaseDate = release.getReleaseDate();
@@ -212,7 +204,7 @@ public class GitController {
         }
     }
 
-    //recupera il numero di linee di codice di ogni classe in una certa release
+    // Calcola le linee di codice di ogni classe in una certa release
     private void calculateLoc(Release release) {
         for (Class javaClass : release.getAllClasses().values()) {
             String[] lines = javaClass.getContent().split("\r\n|\r|\n");
@@ -220,16 +212,19 @@ public class GitController {
         }
     }
 
+    // Calcola le metriche relative alle linee di codice per ogni commit
     private void calculateAllLocMetrics(Release release) throws GitAPIException, IOException {
         if (release.getAllCommits() == null) return;
 
-        // Calcola le linee di codice modificate e aggiorna le metriche per ogni commit
-        for (RevCommit commit : release.getAllCommits()) updateMetricsForCommit(commit, release);
+        for (RevCommit commit : release.getAllCommits()) {
+            updateMetricsForCommit(commit, release);
+        }
 
-        // Setta il valor medio di churn per ogni classe
+        // Imposta il valore medio di churn per ogni classe
         release.getAllClasses().values().forEach(this::setAverageChurn);
     }
 
+    // Aggiorna le metriche di churn per ogni commit
     private void updateMetricsForCommit(RevCommit commit, Release release) throws GitAPIException, IOException {
         if (commit.getParentCount() == 0) return;
 
@@ -241,12 +236,12 @@ public class GitController {
                 .setNewTree(prepareTreeParser(this.repo, commitId))
                 .call();
 
-        // Aggiorna le metriche per ogni diff
         for (DiffEntry diff : diffs) {
             updateMetricsForDiff(diff, commit, release);
         }
     }
 
+    // Aggiorna le metriche per ogni differenza (diff) di un commit
     private void updateMetricsForDiff(DiffEntry diff, RevCommit commit, Release release) throws IOException {
         if (!diff.getNewPath().contains(CLASS_PATH) || diff.getNewPath().contains(TEST_DIR)) return;
 
@@ -256,9 +251,7 @@ public class GitController {
         String modifiedClassPath = diff.getNewPath();
         Class modifiedClass = release.getAllClasses().get(modifiedClassPath);
 
-        if (modifiedClass == null) {
-            return;
-        }
+        if (modifiedClass == null) return;
 
         int addedLines = 0;
         int deletedLines = 0;
@@ -291,35 +284,31 @@ public class GitController {
         }
     }
 
+    // Imposta il valore medio di churn per una classe
     private void setAverageChurn(Class javaClass) {
         List<Integer> churnArray = javaClass.getChurnArray();
         if (!churnArray.isEmpty()) {
             float averageChurn = (float) churnArray.stream().mapToInt(Integer::intValue).sum() / churnArray.size();
-
             javaClass.setAverageChurn(averageChurn);
         }
     }
 
-
-    //ritorna la lista dei path delle classi modificate dal commit
+    // Recupera i percorsi delle classi modificate da un commit
     private List<String> getClassesFromCommit(RevCommit commit) throws GitAPIException, IOException {
-        List<String> modifiedClassPaths = new ArrayList<>();  //path delle classi modificate dal commit
+        List<String> modifiedClassPaths = new ArrayList<>();
         if (commit.getParentCount() == 0) return modifiedClassPaths;
 
         String commitId = commit.getId().getName();
         String parentCommit = commitId + "^";
 
-        final List<DiffEntry> diffs = this.git.diff()
+        List<DiffEntry> diffs = this.git.diff()
                 .setOldTree(prepareTreeParser(this.repo, parentCommit))
                 .setNewTree(prepareTreeParser(this.repo, commitId))
                 .call();
 
-        //recupera la lista delle modifiche effettuate rispetto al commit precedente, ogni modifica è relativa ad un certo file
         for (DiffEntry diff : diffs) {
             if (diff.getNewPath().contains(CLASS_PATH) && !diff.getNewPath().contains(TEST_DIR)) {
-                //recupera il path della classe modificata
-                String modifiedClassPath = diff.getNewPath();
-                modifiedClassPaths.add(modifiedClassPath);
+                modifiedClassPaths.add(diff.getNewPath());
             }
         }
 
@@ -327,8 +316,6 @@ public class GitController {
     }
 
     private static AbstractTreeIterator prepareTreeParser(Repository repository, String objectId) throws IOException {
-        // from the commit we can build the tree which allows us to construct the TreeParser
-        //noinspection Duplicates
         try (RevWalk walk = new RevWalk(repository)) {
             RevCommit commit = walk.parseCommit(repository.resolve(objectId));
             RevTree tree = walk.parseTree(commit.getTree().getId());
@@ -339,11 +326,11 @@ public class GitController {
             }
 
             walk.dispose();
-
             return treeParser;
         }
     }
 
+    // Imposta il numero di autori per ogni classe
     private void calculatenAuth(Release release) {
         if (release.getAllClasses() != null) {
             for (Class javaClass : release.getAllClasses().values()) {
@@ -352,28 +339,27 @@ public class GitController {
         }
     }
 
-
+    // Assegna i commit di fix ai ticket
     private void setFixCommits() {
         int count = 0;
-        int nocount = 0;
+        int noCount = 0;
         for (TicketBug ticket : tickets) {
             if (assignCommitToTicket(ticket)) {
                 count++;
-            }
-            else{
-                nocount++;
+            } else {
+                noCount++;
             }
         }
-        out.println("Fix commit: " + count +"\t No fix commit: "+ nocount);
+        out.println("Fix commit: " + count + "\t No fix commit: " + noCount);
     }
 
-
-    //assegna il fix commit che riporta l'id del ticket (qualora il commit non fosse presente il ticket viene scartato)
+    // Assegna il commit di fix ai ticket, basandosi sull'ID del ticket. Se il commit non viene trovato, il ticket viene scartato.
     private boolean assignCommitToTicket(TicketBug fixTicket) {
         boolean found = false;
         for (Release release : releases) {
             if (release.getAllCommits() != null) {
                 for (RevCommit fixCommit : release.getAllCommits()) {
+                    // Controlla se il messaggio del commit contiene l'ID del ticket
                     if (fixCommit.getFullMessage().contains(fixTicket.getKey() + "]") || fixCommit.getFullMessage().contains(fixTicket.getKey() + ":")) {
                         fixTicket.addFixCommit(fixCommit);
                         found = true;
@@ -384,19 +370,19 @@ public class GitController {
         return found;
     }
 
-
-
+    // Etichetta le classi come buggy in base ai commit di fix e alle release tra IV (inclusa) e FV (esclusa).
     private void setBuggyClassesWalkForward(int index) throws GitAPIException, IOException {
-           for (TicketBug ticket : tickets) {
-            //scarta i ticket che hanno IV = FV, perché siamo interessati solo ai difetti post-release (IV<FV)
-            if (ticket.getFixVersion().getIndex() > index || ticket.getInjectedVersion().getId() == ticket.getFixVersion().getId())
+        for (TicketBug ticket : tickets) {
+            // Scarta i ticket che hanno IV = FV, poiché siamo interessati solo ai difetti post-release (IV < FV)
+            if (ticket.getFixVersion().getIndex() > index || ticket.getInjectedVersion().getId() == ticket.getFixVersion().getId()) {
                 continue;
-            //recupera i fix commit associati al ticket
+            }
+            // Recupera i commit di fix associati al ticket
             for (RevCommit fixCommit : ticket.getCommits()) {
-                //recupera il path delle classi modificate dal commit (ignorando le classi di test)
+                // Recupera i path delle classi modificate dal commit (ignorando le classi di test)
                 List<String> classPaths = getClassesFromCommit(fixCommit);
-                //recupera tutte le Release tra IV (inclusa) e FV(esclusa) indicate sul ticket
-                //etichetta come buggy le classi modificate dal commit come in queste Release
+                // Recupera tutte le release tra IV (inclusa) e FV (esclusa) indicate sul ticket
+                // Etichetta come buggy le classi modificate dal commit in queste release
                 Release injectedRelease = ticket.getInjectedVersion();
                 Release fixRelease = ticket.getFixVersion();
                 setNumFixes(classPaths, fixRelease);
@@ -407,17 +393,17 @@ public class GitController {
         }
     }
 
-
+    // Etichetta le classi come buggy in base ai commit di fix e alle release tra IV (inclusa) e FV (esclusa).
     public void setBuggyClasses() throws GitAPIException, IOException {
         for (TicketBug ticket : tickets) {
-            //scarta i ticket che hanno IV = FV, perchè siamo interessati solo ai difetti post-release (IV<FV)
+            // Scarta i ticket che hanno IV = FV, poiché siamo interessati solo ai difetti post-release (IV < FV)
             if (ticket.getInjectedVersion().getId() == ticket.getFixVersion().getId()) continue;
-            //recupera i fix commit associati al ticket
-            for (RevCommit fixCommit : ticket.getCommits())  {
-                //recupera il path delle classi modificate dal commit (ignorando le classi di test)
+            // Recupera i commit di fix associati al ticket
+            for (RevCommit fixCommit : ticket.getCommits()) {
+                // Recupera i path delle classi modificate dal commit (ignorando le classi di test)
                 List<String> classPaths = getClassesFromCommit(fixCommit);
-                //recupera tutte le Releasei tra IV (inclusa) e FV(esclusa) indicate sul ticket
-                //etichetta come buggy le classi modificate dal commit come in queste Releasei
+                // Recupera tutte le release tra IV (inclusa) e FV (esclusa) indicate sul ticket
+                // Etichetta come buggy le classi modificate dal commit in queste release
                 Release injectedRelease = ticket.getInjectedVersion();
                 Release fixRelease = ticket.getFixVersion();
                 setNumFixes(classPaths, fixRelease);
@@ -428,25 +414,24 @@ public class GitController {
         }
     }
 
-
-
-    private void labelClasses(List<String>  classPaths, Release injectedRelease, Release fixRelease) {
-        //itera fino all injected Release e si ferma
-        for (Release Release : releases) {
-            if (Release.getIndex() == fixRelease.getIndex()) break;
-            if (Release.getIndex() >= injectedRelease.getIndex() && Release.getIndex() < fixRelease.getIndex()) {
-                for (String modifiedClass : classPaths){
-                    Class modifclass = Release.getAllClasses().get(modifiedClass);
-                    if (modifclass!= null) {
-                        //setta la classe come buggy in una certa Release
-                        modifclass.setBuggy(true);
+    // Etichetta le classi come buggy per ogni release tra l'injectedRelease e la fixRelease
+    private void labelClasses(List<String> classPaths, Release injectedRelease, Release fixRelease) {
+        // Itera fino alla fixRelease e si ferma
+        for (Release release : releases) {
+            if (release.getIndex() == fixRelease.getIndex()) break;
+            if (release.getIndex() >= injectedRelease.getIndex() && release.getIndex() < fixRelease.getIndex()) {
+                for (String modifiedClass : classPaths) {
+                    Class modifClass = release.getAllClasses().get(modifiedClass);
+                    if (modifClass != null) {
+                        // Imposta la classe come buggy in una certa release
+                        modifClass.setBuggy(true);
                     }
                 }
             }
         }
     }
 
-    //incrementa di 1 il numero di fix delle classi associate a un fix commit nella fix Release (conta solo i fix dei difetti post-release)
+    // Incrementa di 1 il numero di fix delle classi associate a un commit di fix nella fixRelease
     private void setNumFixes(List<String> classPaths, Release fixRelease) {
         for (String classPath : classPaths) {
             Class modifiedClass = fixRelease.getAllClasses().get(classPath);
@@ -454,275 +439,186 @@ public class GitController {
         }
     }
 
-    //per ridurre lo snoring viene rimossa metà delle release (le più recenti)
+    // Rimuove metà delle release più recenti per ridurre lo snoring
     private void deleteLastReleases() {
         int numReleases = releases.size();
         releases.removeIf(currentRelease -> currentRelease.getIndex() > numReleases / 2);
     }
 
+    // Genera i file CSV e ARFF per il training e il testing usando l'approccio walkForward
     private void printCsvArffWalkForward(String projName) throws IOException, GitAPIException {
-        //per ridurre lo snoring si considerano solo metà delle release
-        //crea due csv per ogni release del progetto (a partire dalla seconda release), uno conterrà il set di dati per il training, l'altro per il setting, secondo un approccio walkForward
-        for (int i = 2; i < releases.size() / 2; i++) { //l'indice i tiene traccia della creazione di training e testing set usati nell'i-esima iterazione del walkForward
-            String trainingName = projName + "//training//" + "training_" + i + "_" + projName+ ".csv";
-            String arffName = projName + "//training//" + "training_" + i + "_" + projName+ ".arff";
+        // Crea due file per ogni release del progetto (a partire dalla seconda release)
+        // Uno per il training set, l'altro per il testing set, usando l'approccio walkForward
+        for (int i = 2; i < releases.size() / 2; i++) { // L'indice i tiene traccia della creazione di training e testing set
+            String trainingName = projName + "//training//" + "training_" + i + "_" + projName + ".csv";
+            String arffName = projName + "//training//" + "training_" + i + "_" + projName + ".arff";
 
             setBuggyClassesWalkForward(i);
             printCsvTrainingSet(trainingName, i);
-            writeArffTraining(arffName,i);
+            writeArffTraining(arffName, i);
         }
 
+        // Per il testing set, utilizza tutte le informazioni disponibili (ponendo il punto di osservazione all'ultima release)
         setBuggyClassesWalkForward(releases.size() - 1);
-        //il testing set ad ogni iterazione è costruito usando tutte le informazioni disponibili (ponendo il punto di osservazione all'ultima release)
         for (int i = 2; i < releases.size() / 2; i++) {
-            String testingName = projName + "//testing//" + "testing_" + i + "_" + projName+ ".csv";
-            String arffName = projName + "//testing//" + "testing_" + i + "_" + projName+ ".arff";
+            String testingName = projName + "//testing//" + "testing_" + i + "_" + projName + ".csv";
+            String arffName = projName + "//testing//" + "testing_" + i + "_" + projName + ".arff";
 
             printCsvTestingSet(testingName, i);
-            writeArffTesting(arffName,i);
+            writeArffTesting(arffName, i);
         }
     }
 
+    // Crea il file CSV per il training set
     private void printCsvTrainingSet(String trainingName, int i) throws IOException {
-        FileWriter trainingWriter = null;
-        try {
-            trainingWriter = new FileWriter(trainingName);
-            trainingWriter.append("LOC,LOC_touched,NR,NFix,NAuth,LOC_added,MAX_LOC_added,Churn,MAX_Churn,AVG_Churn,AVG_Holiday,Buggy");
-            trainingWriter.append("\n");
+        try (FileWriter trainingWriter = new FileWriter(trainingName)) {
+            trainingWriter.append("LOC,LOC_touched,NR,NFix,NAuth,LOC_added,MAX_LOC_added,Churn,MAX_Churn,AVG_Churn,AVG_Holiday,Buggy")
+                    .append("\n");
             for (int j = 0; j < i; j++) {
                 for (Class javaClass : releases.get(j).getAllClasses().values()) {
-                    trainingWriter.append(String.valueOf(javaClass.getLoc()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getLocTouched()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getNr()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getNumFix()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getNumAuth()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getLocAdded()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getMaxLocAdded()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getChurn()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getMaxChurn()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getAverageChurn()));
-                    trainingWriter.append(",");
-                    trainingWriter.append(String.valueOf(javaClass.getAverageHolydays()));
-                    trainingWriter.append(",");
-                    if (javaClass.isBuggy()) trainingWriter.append("YES");
-                    else trainingWriter.append("NO");
-                    trainingWriter.append("\n");
+                    trainingWriter.append(String.valueOf(javaClass.getLoc())).append(",")
+                            .append(String.valueOf(javaClass.getLocTouched())).append(",")
+                            .append(String.valueOf(javaClass.getNr())).append(",")
+                            .append(String.valueOf(javaClass.getNumFix())).append(",")
+                            .append(String.valueOf(javaClass.getNumAuth())).append(",")
+                            .append(String.valueOf(javaClass.getLocAdded())).append(",")
+                            .append(String.valueOf(javaClass.getMaxLocAdded())).append(",")
+                            .append(String.valueOf(javaClass.getChurn())).append(",")
+                            .append(String.valueOf(javaClass.getMaxChurn())).append(",")
+                            .append(String.valueOf(javaClass.getAverageChurn())).append(",")
+                            .append(String.valueOf(javaClass.getAverageHolydays())).append(",")
+                            .append(javaClass.isBuggy() ? "YES" : "NO")
+                            .append("\n");
                 }
             }
-        } finally {
-            if (trainingWriter != null) trainingWriter.close();
         }
     }
 
+    // Crea il file CSV per il testing set
     private void printCsvTestingSet(String testingName, int i) throws IOException {
-        FileWriter testingWriter = null;
-
-        try {
-            testingWriter = new FileWriter(testingName);
-            testingWriter.append("LOC,LOC_touched,NR,NFix,NAuth,LOC_added,MAX_LOC_added,Churn,MAX_Churn,AVG_Churn,AVG_Holiday,Buggy");
-            testingWriter.append("\n");
+        try (FileWriter testingWriter = new FileWriter(testingName)) {
+            testingWriter.append("LOC,LOC_touched,NR,NFix,NAuth,LOC_added,MAX_LOC_added,Churn,MAX_Churn,AVG_Churn,AVG_Holiday,Buggy")
+                    .append("\n");
             for (Class javaClass : releases.get(i).getAllClasses().values()) {
-                testingWriter.append(String.valueOf(javaClass.getLoc()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getLocTouched()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getNr()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getNumFix()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getNumAuth()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getLocAdded()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getMaxLocAdded()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getChurn()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getMaxChurn()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getAverageChurn()));
-                testingWriter.append(",");
-                testingWriter.append(String.valueOf(javaClass.getAverageHolydays()));
-                testingWriter.append(",");
-                if (javaClass.isBuggy()) testingWriter.append("YES");
-                else testingWriter.append("NO");
-                testingWriter.append("\n");
+                testingWriter.append(String.valueOf(javaClass.getLoc())).append(",")
+                        .append(String.valueOf(javaClass.getLocTouched())).append(",")
+                        .append(String.valueOf(javaClass.getNr())).append(",")
+                        .append(String.valueOf(javaClass.getNumFix())).append(",")
+                        .append(String.valueOf(javaClass.getNumAuth())).append(",")
+                        .append(String.valueOf(javaClass.getLocAdded())).append(",")
+                        .append(String.valueOf(javaClass.getMaxLocAdded())).append(",")
+                        .append(String.valueOf(javaClass.getChurn())).append(",")
+                        .append(String.valueOf(javaClass.getMaxChurn())).append(",")
+                        .append(String.valueOf(javaClass.getAverageChurn())).append(",")
+                        .append(String.valueOf(javaClass.getAverageHolydays())).append(",")
+                        .append(javaClass.isBuggy() ? "YES" : "NO")
+                        .append("\n");
             }
-            testingWriter.flush();
-        } finally {
-            if (testingWriter != null) testingWriter.close();
         }
     }
 
+    // Crea il file ARFF per il testing set
+    private void writeArffTesting(String filename, int i) throws IOException {
+        String[] parts = filename.split("\\.");
+        try (FileWriter fileWriter = new FileWriter(filename)) {
+            fileWriter.append("@relation " + parts[0]).append("\n\n")
+                    .append("@attribute LOC numeric").append("\n")
+                    .append("@attribute LOC_touched numeric").append("\n")
+                    .append("@attribute NR numeric").append("\n")
+                    .append("@attribute NFix numeric").append("\n")
+                    .append("@attribute NAuth numeric").append("\n")
+                    .append("@attribute LOC_added numeric").append("\n")
+                    .append("@attribute MAX_LOC_added numeric").append("\n")
+                    .append("@attribute Churn numeric").append("\n")
+                    .append("@attribute MAX_Churn numeric").append("\n")
+                    .append("@attribute AVG_Churn numeric").append("\n")
+                    .append("@attribute AVG_Holiday numeric").append("\n")
+                    .append("@attribute Buggy {'YES', 'NO'}").append("\n\n")
+                    .append("@data").append("\n");
+            for (Class javaClass : releases.get(i).getAllClasses().values()) {
+                fileWriter.append(String.valueOf(javaClass.getLoc())).append(",")
+                        .append(String.valueOf(javaClass.getLocTouched())).append(",")
+                        .append(String.valueOf(javaClass.getNr())).append(",")
+                        .append(String.valueOf(javaClass.getNumFix())).append(",")
+                        .append(String.valueOf(javaClass.getNumAuth())).append(",")
+                        .append(String.valueOf(javaClass.getLocAdded())).append(",")
+                        .append(String.valueOf(javaClass.getMaxLocAdded())).append(",")
+                        .append(String.valueOf(javaClass.getChurn())).append(",")
+                        .append(String.valueOf(javaClass.getMaxChurn())).append(",")
+                        .append(String.valueOf(javaClass.getAverageChurn())).append(",")
+                        .append(String.valueOf(javaClass.getAverageHolydays())).append(",")
+                        .append(javaClass.isBuggy() ? "YES" : "NO")
+                        .append("\n");
+            }
+        }
+    }
 
+    // Crea il file ARFF per il training set
+    private void writeArffTraining(String filename, int i) throws IOException {
+        String[] parts = filename.split("\\.");
+        try (FileWriter fileWriter = new FileWriter(filename)) {
+            fileWriter.append("@relation " + parts[0]).append("\n\n")
+                    .append("@attribute LOC numeric").append("\n")
+                    .append("@attribute LOC_touched numeric").append("\n")
+                    .append("@attribute NR numeric").append("\n")
+                    .append("@attribute NFix numeric").append("\n")
+                    .append("@attribute NAuth numeric").append("\n")
+                    .append("@attribute LOC_added numeric").append("\n")
+                    .append("@attribute MAX_LOC_added numeric").append("\n")
+                    .append("@attribute Churn numeric").append("\n")
+                    .append("@attribute MAX_Churn numeric").append("\n")
+                    .append("@attribute AVG_Churn numeric").append("\n")
+                    .append("@attribute AVG_Holiday numeric").append("\n")
+                    .append("@attribute Buggy {'YES', 'NO'}").append("\n\n")
+                    .append("@data").append("\n");
+            for (int j = 0; j < i; j++) {
+                for (Class javaClass : releases.get(j).getAllClasses().values()) {
+                    fileWriter.append(String.valueOf(javaClass.getLoc())).append(",")
+                            .append(String.valueOf(javaClass.getLocTouched())).append(",")
+                            .append(String.valueOf(javaClass.getNr())).append(",")
+                            .append(String.valueOf(javaClass.getNumFix())).append(",")
+                            .append(String.valueOf(javaClass.getNumAuth())).append(",")
+                            .append(String.valueOf(javaClass.getLocAdded())).append(",")
+                            .append(String.valueOf(javaClass.getMaxLocAdded())).append(",")
+                            .append(String.valueOf(javaClass.getChurn())).append(",")
+                            .append(String.valueOf(javaClass.getMaxChurn())).append(",")
+                            .append(String.valueOf(javaClass.getAverageChurn())).append(",")
+                            .append(String.valueOf(javaClass.getAverageHolydays())).append(",")
+                            .append(javaClass.isBuggy() ? "YES" : "NO")
+                            .append("\n");
+                }
+            }
+        }
+    }
+
+    // Crea il file CSV per l'intero dataset
     public void printDataset(String projName) throws IOException, GitAPIException {
-        FileWriter fileWriter = null;
         setBuggyClasses();
-        //Name of CSV for output
         String outname = projName + "//dataset_" + projName + ".csv";
-        try {
-            fileWriter = new FileWriter(outname);
-            fileWriter.append("Index,Class,LOC,LOC_touched,NR,NFix,NAuth,LOC_added,MAX_LOC_added,Churn,MAX_Churn,AVG_Churn,AVG_Holiday,Buggy");
-            fileWriter.append("\n");
+        try (FileWriter fileWriter = new FileWriter(outname)) {
+            fileWriter.append("Index,Class,LOC,LOC_touched,NR,NFix,NAuth,LOC_added,MAX_LOC_added,Churn,MAX_Churn,AVG_Churn,AVG_Holiday,Buggy")
+                    .append("\n");
             for (Release release : releases) {
                 if (release.getAllClasses() != null) {
                     for (Class javaClass : release.getAllClasses().values()) {
-                        fileWriter.append(String.valueOf(javaClass.getVersion()));
-                        fileWriter.append(",");
-                        fileWriter.append(javaClass.getPath());
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getLoc()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getLocTouched()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getNr()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getNumFix()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getNumAuth()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getLocAdded()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getMaxLocAdded()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getChurn()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getMaxChurn()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getAverageChurn()));
-                        fileWriter.append(",");
-                        fileWriter.append(String.valueOf(javaClass.getAverageHolydays()));
-                        fileWriter.append(",");
-                        if (javaClass.isBuggy()) fileWriter.append("YES");
-                        else fileWriter.append("NO");
-                        fileWriter.append("\n");
+                        fileWriter.append(String.valueOf(javaClass.getVersion())).append(",")
+                                .append(javaClass.getPath()).append(",")
+                                .append(String.valueOf(javaClass.getLoc())).append(",")
+                                .append(String.valueOf(javaClass.getLocTouched())).append(",")
+                                .append(String.valueOf(javaClass.getNr())).append(",")
+                                .append(String.valueOf(javaClass.getNumFix())).append(",")
+                                .append(String.valueOf(javaClass.getNumAuth())).append(",")
+                                .append(String.valueOf(javaClass.getLocAdded())).append(",")
+                                .append(String.valueOf(javaClass.getMaxLocAdded())).append(",")
+                                .append(String.valueOf(javaClass.getChurn())).append(",")
+                                .append(String.valueOf(javaClass.getMaxChurn())).append(",")
+                                .append(String.valueOf(javaClass.getAverageChurn())).append(",")
+                                .append(String.valueOf(javaClass.getAverageHolydays())).append(",")
+                                .append(javaClass.isBuggy() ? "YES" : "NO")
+                                .append("\n");
                     }
                 }
             }
-            fileWriter.flush();
-        } finally {
-            if (fileWriter != null) fileWriter.close();
-        }
-    }
-
-
-    private void writeArffTesting(String filename, int i) throws IOException{
-        String[] parts = filename.split("\\.");
-        FileWriter fileWriter = null;
-        //Name of CSV for output
-        try {
-            fileWriter = new FileWriter(filename);
-            fileWriter.append("@relation " + parts[0]).append("\n\n")
-                    .append("@attribute LOC numeric").append("\n")
-                    .append("@attribute LOC_touched numeric").append("\n")
-                    .append("@attribute NR numeric").append("\n")
-                    .append("@attribute NFix numeric").append("\n")
-                    .append("@attribute NAuth numeric").append("\n")
-                    .append("@attribute LOC_added numeric").append("\n")
-                    .append("@attribute MAX_LOC_added numeric").append("\n")
-                    .append("@attribute Churn numeric").append("\n")
-                    .append("@attribute MAX_Churn numeric").append("\n")
-                    .append("@attribute AVG_Churn numeric").append("\n")
-                    .append("@attribute AVG_Holiday numeric").append("\n")
-                    .append("@attribute Buggy {'YES', 'NO'}").append("\n\n")
-                    .append("@data").append("\n");
-            for (Class javaClass : releases.get(i).getAllClasses().values()) {
-                fileWriter.append(String.valueOf(javaClass.getLoc()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getLocTouched()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getNr()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getNumFix()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getNumAuth()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getLocAdded()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getMaxLocAdded()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getChurn()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getMaxChurn()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getAverageChurn()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(javaClass.getAverageHolydays()));
-                fileWriter.append(",");
-                if (javaClass.isBuggy()) fileWriter.append("YES");
-                else fileWriter.append("NO");
-                fileWriter.append("\n");
-
-            }
-            fileWriter.flush();
-        } finally {
-            if (fileWriter != null) fileWriter.close();
-        }
-    }
-
-    private void writeArffTraining(String filename, int i) throws IOException{
-        String[] parts = filename.split("\\.");
-        FileWriter fileWriter = null;
-        //Name of CSV for output
-        try {
-            fileWriter = new FileWriter(filename);
-
-            fileWriter.append("@relation " + parts[0]).append("\n\n")
-                    .append("@attribute LOC numeric").append("\n")
-                    .append("@attribute LOC_touched numeric").append("\n")
-                    .append("@attribute NR numeric").append("\n")
-                    .append("@attribute NFix numeric").append("\n")
-                    .append("@attribute NAuth numeric").append("\n")
-                    .append("@attribute LOC_added numeric").append("\n")
-                    .append("@attribute MAX_LOC_added numeric").append("\n")
-                    .append("@attribute Churn numeric").append("\n")
-                    .append("@attribute MAX_Churn numeric").append("\n")
-                    .append("@attribute AVG_Churn numeric").append("\n")
-                    .append("@attribute AVG_Holiday numeric").append("\n")
-                    .append("@attribute Buggy {'YES', 'NO'}").append("\n\n")
-                    .append("@data").append("\n");
-
-            for (int j = 0; j < i; j++) {
-                for (Class javaClass : releases.get(j).getAllClasses().values()) {
-                    fileWriter.append(String.valueOf(javaClass.getLoc()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getLocTouched()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getNr()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getNumFix()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getNumAuth()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getLocAdded()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getMaxLocAdded()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getChurn()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getMaxChurn()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getAverageChurn()));
-                    fileWriter.append(",");
-                    fileWriter.append(String.valueOf(javaClass.getAverageHolydays()));
-                    fileWriter.append(",");
-                    if (javaClass.isBuggy()) fileWriter.append("YES");
-                    else fileWriter.append("NO");
-                    fileWriter.append("\n");
-                }
-            }
-            fileWriter.flush();
-        } finally {
-            if (fileWriter != null) fileWriter.close();
         }
     }
 }
