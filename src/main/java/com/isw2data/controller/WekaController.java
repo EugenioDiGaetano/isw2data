@@ -97,10 +97,13 @@ public class WekaController {
             Instances fsBackTraining = featureSelectionBack.reduceDimensionality(training);
             int numAttributesFsBack = fsBackTraining.numAttributes();
 
-            String attributeNameFsBack = fsBackTraining.attribute(0).name();
+            StringBuilder attributeNameFsBackBld = new StringBuilder();
+            attributeNameFsBackBld.append(fsBackTraining.attribute(0).name());
             for (int k = 0; k < numAttributesFsBack; k++) {
-                attributeNameFsBack += ", " + (fsBackTraining.attribute(k).name());
+                attributeNameFsBackBld.append(", ").append(fsBackTraining.attribute(k).name());
             }
+            String attributeNameFsBack = attributeNameFsBackBld.toString();
+
             out.println("Attributi scelti da backwards: "+ attributeNameFsBack);
 
             // Applica la selezione delle caratteristiche al set di testing
@@ -131,10 +134,12 @@ public class WekaController {
             Instances fsForTraining = featureSelectionFor.reduceDimensionality(training);
             int numAttributesFsFor = fsForTraining.numAttributes();
 
-            String attributeNameFsFor = fsForTraining.attribute(0).name();
-            for (int k = 1; k < numAttributesFsFor; k++) {
-                attributeNameFsFor += ", " + (fsForTraining.attribute(k).name());
+            StringBuilder attributeNameFsForBld = new StringBuilder();
+            attributeNameFsForBld.append(fsBackTraining.attribute(0).name());
+            for (int k = 0; k < numAttributesFsBack; k++) {
+                attributeNameFsForBld.append(", ").append(fsBackTraining.attribute(k).name());
             }
+            String attributeNameFsFor = attributeNameFsBackBld.toString();
             out.println("Attributi scelti da forwards: "+ attributeNameFsFor);
 
             // Applica la selezione delle caratteristiche al set di testing
@@ -294,7 +299,8 @@ public class WekaController {
         int index = 0;
         int numtesting = testing.numInstances();
 
-        //out.println("There are " + numtesting + " test instances");
+        out.println("There are " + numtesting + " test instances");
+        
         if (!acumeClasses.isEmpty()) {
             acumeClasses.clear();
         }
