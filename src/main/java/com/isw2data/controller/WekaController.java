@@ -136,7 +136,7 @@ public class WekaController {
 
             StringBuilder attributeNameFsForBld = new StringBuilder();
             attributeNameFsForBld.append(fsBackTraining.attribute(0).name());
-            for (int k = 0; k < numAttributesFsBack; k++) {
+            for (int k = 0; k < numAttributesFsFor; k++) {
                 attributeNameFsForBld.append(", ").append(fsBackTraining.attribute(k).name());
             }
             String attributeNameFsFor = attributeNameFsBackBld.toString();
@@ -300,7 +300,7 @@ public class WekaController {
         int numtesting = testing.numInstances();
 
         out.println("There are " + numtesting + " test instances");
-        
+
         if (!acumeClasses.isEmpty()) {
             acumeClasses.clear();
         }
