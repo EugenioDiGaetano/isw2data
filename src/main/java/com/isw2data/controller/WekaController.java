@@ -41,7 +41,7 @@ public class WekaController {
     private static final String TESTING_NAME = "testing";
     private static final String ARRF_EXT = ".arff";
     private static final String ACUME_NAME = "acume";
-    private static final Boolean print = false;
+    private static final String PRINT = "NO";
 
     // Valuta un progetto con più classificatori su diverse release
     public void evaluateProject(String projectName, int numReleases) throws Exception {
@@ -298,7 +298,7 @@ public class WekaController {
     public static void printProbabilities(Classifier classifier, Instances training, Instances testing, Instances testingLoc, String name) throws Exception {
         int index = 0;
         int numtesting = testing.numInstances();
-        if (print) {
+        if (PRINT != "NONE") {
         out.println("There are " + numtesting + " test instances");
 }
         if (!acumeClasses.isEmpty()) {
@@ -330,7 +330,7 @@ public class WekaController {
                     classifier.distributionForInstance(testing.instance(i));
 
             // Print out the true label, predicted label, and the distribution.
-            if (print) {
+            if (PRINT != "NONE") {
                 out.printf("%5d: true=%-10s, predicted=%-10s, distribution=",
                         i, trueClassLabel, predictedClassLabel);
             }
@@ -347,13 +347,13 @@ public class WekaController {
                 // Get the probability.
                 double predictionProbability =
                         predictionDistribution[predictionDistributionIndex];
-                if (print) {
+                if (PRINT != "NONE") {
                     out.printf("[%10s : %6.3f]",
                             predictionDistributionIndexAsClassLabel,
                             predictionProbability);
                 }
             }
-            if (print) {
+            if (PRINT != "NONE") {
                 out.println();
             }
             Acume acumeClass = new Acume(index, locValue, classifier.distributionForInstance(testing.instance(i))[0], trueClassLabel);
