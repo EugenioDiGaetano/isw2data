@@ -41,7 +41,7 @@ public class WekaController {
     private static final String TESTING_NAME = "testing";
     private static final String ARRF_EXT = ".arff";
     private static final String ACUME_NAME = "acume";
-
+    private static final Boolean print = false;
 
     // Valuta un progetto con più classificatori su diverse release
     public void evaluateProject(String projectName, int numReleases) throws Exception {
@@ -298,9 +298,9 @@ public class WekaController {
     public static void printProbabilities(Classifier classifier, Instances training, Instances testing, Instances testingLoc, String name) throws Exception {
         int index = 0;
         int numtesting = testing.numInstances();
-
+        if (print) {
         out.println("There are " + numtesting + " test instances");
-
+}
         if (!acumeClasses.isEmpty()) {
             acumeClasses.clear();
         }
@@ -330,9 +330,10 @@ public class WekaController {
                     classifier.distributionForInstance(testing.instance(i));
 
             // Print out the true label, predicted label, and the distribution.
-            out.printf("%5d: true=%-10s, predicted=%-10s, distribution=",
-                    i, trueClassLabel, predictedClassLabel);
-
+            if (print) {
+                out.printf("%5d: true=%-10s, predicted=%-10s, distribution=",
+                        i, trueClassLabel, predictedClassLabel);
+            }
             // Loop over all the prediction labels in the distribution.
             //in questo caso abbiamo due possibili classi quindi due probabilità
             for (int predictionDistributionIndex = 0;
@@ -346,13 +347,15 @@ public class WekaController {
                 // Get the probability.
                 double predictionProbability =
                         predictionDistribution[predictionDistributionIndex];
-
-                out.printf("[%10s : %6.3f]",
-                        predictionDistributionIndexAsClassLabel,
-                        predictionProbability);
-
+                if (print) {
+                    out.printf("[%10s : %6.3f]",
+                            predictionDistributionIndexAsClassLabel,
+                            predictionProbability);
+                }
             }
-            out.println();
+            if (print) {
+                out.println();
+            }
             Acume acumeClass = new Acume(index, locValue, classifier.distributionForInstance(testing.instance(i))[0], trueClassLabel);
             index++;
             acumeClasses.add(acumeClass);
