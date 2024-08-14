@@ -298,7 +298,7 @@ public class WekaController {
     public static void printProbabilities(Classifier classifier, Instances training, Instances testing, Instances testingLoc, String name) throws Exception {
         int index = 0;
         int numtesting = testing.numInstances();
-        if (PRINT != "NONE") {
+        if (PRINT.equals("ALL")) {
         out.println("There are " + numtesting + " test instances");
 }
         if (!acumeClasses.isEmpty()) {
@@ -330,7 +330,7 @@ public class WekaController {
                     classifier.distributionForInstance(testing.instance(i));
 
             // Print out the true label, predicted label, and the distribution.
-            if (PRINT != "NONE") {
+            if (PRINT.equals("ALL")) {
                 out.printf("%5d: true=%-10s, predicted=%-10s, distribution=",
                         i, trueClassLabel, predictedClassLabel);
             }
@@ -347,13 +347,13 @@ public class WekaController {
                 // Get the probability.
                 double predictionProbability =
                         predictionDistribution[predictionDistributionIndex];
-                if (PRINT != "NONE") {
+                if (PRINT.equals("ALL")) {
                     out.printf("[%10s : %6.3f]",
                             predictionDistributionIndexAsClassLabel,
                             predictionProbability);
                 }
             }
-            if (PRINT != "NONE") {
+            if (PRINT.equals("ALL")) {
                 out.println();
             }
             Acume acumeClass = new Acume(index, locValue, classifier.distributionForInstance(testing.instance(i))[0], trueClassLabel);
