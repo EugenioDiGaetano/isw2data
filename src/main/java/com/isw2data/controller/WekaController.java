@@ -99,7 +99,7 @@ public class WekaController {
 
             StringBuilder attributeNameFsBackBld = new StringBuilder();
             attributeNameFsBackBld.append(fsBackTraining.attribute(0).name());
-            for (int k = 0; k < numAttributesFsBack; k++) {
+            for (int k = 1; k < numAttributesFsBack; k++) {
                 attributeNameFsBackBld.append(", ").append(fsBackTraining.attribute(k).name());
             }
             String attributeNameFsBack = attributeNameFsBackBld.toString();
@@ -136,7 +136,7 @@ public class WekaController {
 
             StringBuilder attributeNameFsForBld = new StringBuilder();
             attributeNameFsForBld.append(fsBackTraining.attribute(0).name());
-            for (int k = 0; k < numAttributesFsFor; k++) {
+            for (int k = 1; k < numAttributesFsFor; k++) {
                 attributeNameFsForBld.append(", ").append(fsBackTraining.attribute(k).name());
             }
             String attributeNameFsFor = attributeNameFsBackBld.toString();

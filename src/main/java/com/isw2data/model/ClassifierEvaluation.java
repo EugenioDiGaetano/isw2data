@@ -115,22 +115,22 @@ public class ClassifierEvaluation {
 
     // Restituisce la precisione del classificatore
     public double getPrecision() {
-        return precision;
+        return Double.isNaN(precision) ? 0.0 : precision;
     }
 
     // Restituisce il richiamo (recall) del classificatore
     public double getRecall() {
-        return recall;
+        return Double.isNaN(recall) ? 0.0 : recall;
     }
 
     // Restituisce l'area sotto la curva ROC (AUC)
     public double getAuc() {
-        return auc;
+        return Double.isNaN(auc) ? 0.0 : auc;
     }
 
     // Restituisce la statistica kappa
     public double getKappa() {
-        return kappa;
+        return Double.isNaN(kappa) ? 0.0 : kappa;
     }
 
     // Restituisce il numero di veri positivi
@@ -155,11 +155,11 @@ public class ClassifierEvaluation {
 
     // Restituisce il costo totale calcolato
     public double getCost() {
-        return cost;
+        return Double.isNaN(cost) ? 0.0 : cost;
     }
 
     // Restituisce il F1-score del classificatore
     public double getF1() {
-        return f1;
+        return Double.isNaN(f1) ? 0.0 : f1;
     }
 }
