@@ -160,7 +160,7 @@ public class WekaController {
                 if (training.instance(k).classValue() == 0.0) positiveCount++;
                 else negativeCount++;
             }
-            if (negativeCount > positiveCount) out.println("OK: " + i);
+            if (negativeCount > positiveCount) out.println("Release: " + i);
 
             Resample resample = new Resample();
             resample.setInputFormat(training);
@@ -247,7 +247,7 @@ public class WekaController {
         String outname = projName + "//evaluations" + projName + ".csv";
         try {
             fileWriter = new FileWriter(outname);
-            fileWriter.append("Dataset, #TrainingReleases, Classifier, FeatureSelection, Balancing, CostSensitive, TruePositive, FalsePositive, TrueNegative, FalseNegative, Cost, Precision, Recall, AUC, Kappa, FMeasure");
+            fileWriter.append("Dataset, #TrainingReleases, Classifier, Feature, TruePositive, FalsePositive, TrueNegative, FalseNegative, Cost, Precision, Recall, AUC, Kappa, FMeasure");
             fileWriter.append("\n");
             for (ClassifierEvaluation evaluation : evaluations) {
                 fileWriter.append(evaluation.getProjName());
@@ -256,12 +256,18 @@ public class WekaController {
                 fileWriter.append(",");
                 fileWriter.append(evaluation.getClassifier());
                 fileWriter.append(",");
-                fileWriter.append(String.valueOf(evaluation.getFeatureSelection()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(evaluation.getSampling()));
-                fileWriter.append(",");
-                fileWriter.append(String.valueOf(evaluation.getCostSensitive()));
-                fileWriter.append(",");
+                if (evaluation.getFeatureSelection() != FeatureSelection.NONE) {
+                    fileWriter.append(String.valueOf(evaluation.getFeatureSelection()));
+                    fileWriter.append(",");
+                }
+                else if (evaluation.getSampling() != Sampling.NONE) {
+                    fileWriter.append(String.valueOf(evaluation.getSampling()));
+                    fileWriter.append(",");
+                }
+                else {
+                    fileWriter.append(String.valueOf(evaluation.getCostSensitive()));
+                    fileWriter.append(",");
+                }
                 fileWriter.append(String.valueOf(evaluation.getTp()));
                 fileWriter.append(",");
                 fileWriter.append(String.valueOf(evaluation.getFp()));
