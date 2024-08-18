@@ -8,6 +8,7 @@ import com.isw2data.enumeration.Sampling;
 import com.isw2data.enumeration.ClassifierType;
 
 import weka.attributeSelection.AttributeSelection;
+import weka.attributeSelection.BestFirst;
 import weka.attributeSelection.CfsSubsetEval;
 import weka.attributeSelection.GreedyStepwise;
 import weka.classifiers.Classifier;
@@ -19,8 +20,8 @@ import weka.classifiers.meta.CostSensitiveClassifier;
 import weka.classifiers.meta.FilteredClassifier;
 import weka.classifiers.trees.RandomForest;
 import weka.core.Instances;
+import weka.core.SelectedTag;
 import weka.core.converters.ConverterUtils;
-import weka.filters.Filter;
 import weka.filters.supervised.instance.SMOTE;
 import weka.filters.supervised.instance.SpreadSubsample;
 import weka.filters.unsupervised.instance.Resample;
@@ -81,130 +82,139 @@ public class WekaController {
 
             ClassifierEvaluation evaluation = new ClassifierEvaluation(projectName, i, eval, classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.NONE);
             evaluations.add(evaluation);
-            printProbabilities(classifier, training, testing, testing, acumeName);
+            printProbabilities(classifier, training, testing, testing, acumeName, "NONE");
 
-            // Esegui la selezione delle caratteristiche
-            AttributeSelection featureSelectionBack = new AttributeSelection();
-            CfsSubsetEval cfsEvaluatorBack = new CfsSubsetEval(); // Usando CfsSubsetEval
-            GreedyStepwise searchBack = new GreedyStepwise();
-            searchBack.setSearchBackwards(true);
+            // FEATURE SELECTION BEAST FIRST
+            AttributeSelection featureSelectionBest = new AttributeSelection();
+            CfsSubsetEval cfsEvaluatorBest = new CfsSubsetEval(); // Usando CfsSubsetEval
+            BestFirst searchBest = new BestFirst();
+            searchBest.setDirection(new SelectedTag(0, searchBest.getDirection().getTags()));
 
-            featureSelectionBack.setEvaluator(cfsEvaluatorBack);
-            featureSelectionBack.setSearch(searchBack);
+            featureSelectionBest.setEvaluator(cfsEvaluatorBest);
+            featureSelectionBest.setSearch(searchBest);
 
-            // Applica la selezione delle caratteristiche al set di training
-            featureSelectionBack.SelectAttributes(training);
-            Instances fsBackTraining = featureSelectionBack.reduceDimensionality(training);
-            int numAttributesFsBack = fsBackTraining.numAttributes();
+            featureSelectionBest.SelectAttributes(training);
+            Instances fsBestTraining = featureSelectionBest.reduceDimensionality(training);
+            Instances fsBestTesting = featureSelectionBest.reduceDimensionality(testing);
 
-            StringBuilder attributeNameFsBackBld = new StringBuilder();
-            attributeNameFsBackBld.append(fsBackTraining.attribute(0).name());
-            for (int k = 1; k < numAttributesFsBack; k++) {
-                attributeNameFsBackBld.append(", ").append(fsBackTraining.attribute(k).name());
+            int numAttributesFsBest = fsBestTraining.numAttributes();
+            fsBestTraining.setClassIndex(numAttributesFsBest-1);
+            fsBestTesting.setClassIndex(numAttributesFsBest-1);
+
+            StringBuilder attributeNameFsBestBld = new StringBuilder();
+            attributeNameFsBestBld.append(fsBestTraining.attribute(0).name());
+            for (int k = 1; k < numAttributesFsBest; k++) {
+                attributeNameFsBestBld.append(", ").append(fsBestTraining.attribute(k).name());
             }
-            String attributeNameFsBack = attributeNameFsBackBld.toString();
+            String attributeNameFsBest = attributeNameFsBestBld.toString();
+            out.println("Attributi scelti da forwards: "+ attributeNameFsBest);
 
-            out.println("Attributi scelti da backwards: "+ attributeNameFsBack);
+            classifier.buildClassifier(fsBestTraining);
 
-            // Applica la selezione delle caratteristiche al set di testing
-            Instances fsBackTesting = featureSelectionBack.reduceDimensionality(testing);
+            Evaluation evalWithFsBest = new Evaluation(fsBestTraining);
+            evalWithFsBest.evaluateModel(classifier, fsBestTesting);
 
-            // Costruisci e valuta il modello con selezione delle caratteristiche
-            classifier.buildClassifier(fsBackTraining);
-            Evaluation evalWithFsBack = new Evaluation(fsBackTraining);
-            evalWithFsBack.evaluateModel(classifier, fsBackTesting);
+            ClassifierEvaluation evaluationWithFsBest = new ClassifierEvaluation(projectName, i, evalWithFsBest, classifierName,
+                    FeatureSelection.BESTFIRST, Sampling.NONE, CostSensitive.NONE);
+            evaluations.add(evaluationWithFsBest);
+            printProbabilities(classifier, fsBestTraining, fsBestTesting, testing, acumeName, FeatureSelection.BESTFIRST.name());
 
-            // Salva i risultati della valutazione con feature selection specifica
-            ClassifierEvaluation evaluationWithFsBack = new ClassifierEvaluation(projectName, i, evalWithFsBack, classifierName,
-                    FeatureSelection.GREEDYSTEPWISE_BACKWORDS, Sampling.NONE, CostSensitive.NONE);
-            evaluations.add(evaluationWithFsBack);
-            printProbabilities(classifier, fsBackTraining, fsBackTesting, testing, acumeName + "_" + FeatureSelection.GREEDYSTEPWISE_BACKWORDS);
+            // FEATURE SELECTION GREEDY STEPWISE
+            AttributeSelection featureSelectionGreedyStepwise = new AttributeSelection();
+            CfsSubsetEval cfsEvaluatorGreedyStepwise = new CfsSubsetEval(); // Usando CfsSubsetEval
+            GreedyStepwise searchGreedyStepwise = new GreedyStepwise();
+            searchGreedyStepwise.setSearchBackwards(false);
 
-            // Esegui la selezione delle caratteristiche
-            AttributeSelection featureSelectionFor = new AttributeSelection();
-            CfsSubsetEval cfsEvaluatorFor = new CfsSubsetEval(); // Usando CfsSubsetEval
-            GreedyStepwise searchFor = new GreedyStepwise();
-            searchFor.setSearchBackwards(false);
+            featureSelectionGreedyStepwise.setEvaluator(cfsEvaluatorGreedyStepwise);
+            featureSelectionGreedyStepwise.setSearch(searchGreedyStepwise);
 
-            featureSelectionFor.setEvaluator(cfsEvaluatorFor);
-            featureSelectionFor.setSearch(searchFor);
+            featureSelectionGreedyStepwise.SelectAttributes(training);
+            Instances fsGreedyStepwiseTraining = featureSelectionGreedyStepwise.reduceDimensionality(training);
+            Instances fsGreedyStepwiseTesting = featureSelectionGreedyStepwise.reduceDimensionality(testing);
 
-            // Applica la selezione delle caratteristiche al set di training
-            featureSelectionFor.SelectAttributes(training);
-            Instances fsForTraining = featureSelectionFor.reduceDimensionality(training);
-            int numAttributesFsFor = fsForTraining.numAttributes();
+            int numAttributesFsGreedyStepwise = fsGreedyStepwiseTraining.numAttributes();
+            fsGreedyStepwiseTraining.setClassIndex(numAttributesFsGreedyStepwise-1);
+            fsGreedyStepwiseTesting.setClassIndex(numAttributesFsGreedyStepwise-1);
 
-            StringBuilder attributeNameFsForBld = new StringBuilder();
-            attributeNameFsForBld.append(fsBackTraining.attribute(0).name());
-            for (int k = 1; k < numAttributesFsFor; k++) {
-                attributeNameFsForBld.append(", ").append(fsBackTraining.attribute(k).name());
+            StringBuilder attributeNameFsGreedyStepwiseBld = new StringBuilder();
+            attributeNameFsGreedyStepwiseBld.append(fsGreedyStepwiseTraining.attribute(0).name());
+            for (int k = 1; k < numAttributesFsGreedyStepwise; k++) {
+                attributeNameFsGreedyStepwiseBld.append(", ").append(fsGreedyStepwiseTraining.attribute(k).name());
             }
-            String attributeNameFsFor = attributeNameFsBackBld.toString();
-            out.println("Attributi scelti da forwards: "+ attributeNameFsFor);
+            String attributeNameFsGreedyStepwise = attributeNameFsGreedyStepwiseBld.toString();
+            out.println("Attributi scelti da GreedyStepwise: "+ attributeNameFsGreedyStepwise);
 
-            // Applica la selezione delle caratteristiche al set di testing
-            Instances fsForTesting = featureSelectionFor.reduceDimensionality(testing);
+            classifier.buildClassifier(fsGreedyStepwiseTraining);
+            Evaluation evalWithFsGreedyStepwise = new Evaluation(fsGreedyStepwiseTraining);
+            evalWithFsGreedyStepwise.evaluateModel(classifier, fsGreedyStepwiseTesting);
 
-            // Costruisci e valuta il modello con selezione delle caratteristiche
-            classifier.buildClassifier(fsForTraining);
-            Evaluation evalWithFsFor = new Evaluation(fsForTraining);
-            evalWithFsFor.evaluateModel(classifier, fsForTesting);
+            ClassifierEvaluation evaluationWithFsGreedyStepwise = new ClassifierEvaluation(projectName, i, evalWithFsGreedyStepwise, classifierName,
+                    FeatureSelection.GREEDYSTEPWISE, Sampling.NONE, CostSensitive.NONE);
+            evaluations.add(evaluationWithFsGreedyStepwise);
+            printProbabilities(classifier, fsGreedyStepwiseTraining, fsGreedyStepwiseTesting, testing, acumeName, FeatureSelection.GREEDYSTEPWISE.name());
 
-            // Salva i risultati della valutazione con feature selection specifica
-            ClassifierEvaluation evaluationWithFsFor = new ClassifierEvaluation(projectName, i, evalWithFsFor, classifierName,
-                    FeatureSelection.GREEDYSTEPWISE_FORWORDS, Sampling.NONE, CostSensitive.NONE);
-            evaluations.add(evaluationWithFsFor);
-            printProbabilities(classifier, fsForTraining, fsForTesting, testing, acumeName + "_" + FeatureSelection.GREEDYSTEPWISE_FORWORDS);
+            // OVERSAMPLING
+            double positiveCount = 0;
+            double negativeCount = 0;
+            for (int k = 0; k<training.numInstances(); k++) {
+                if (training.instance(k).classValue() == 0.0) positiveCount++;
+                else negativeCount++;
+            }
+            if (negativeCount > positiveCount) out.println("OK: " + i);
 
-            // Applicare Smote
-            SMOTE smote = new SMOTE();
-            smote.setInputFormat(training);
-            Instances smoteTraining = Filter.useFilter(training, smote);
-
-            // Costruisci e valuta il modello con oversampling senza selezione delle caratteristiche
-            classifier.buildClassifier(smoteTraining);
-            Evaluation evalWithSMOTE = new Evaluation(smoteTraining);
-            evalWithSMOTE.evaluateModel(classifier, testing);
-            ClassifierEvaluation evaluationWithSMOTE = new ClassifierEvaluation(projectName, i, evalWithSMOTE, classifierName,
-                    FeatureSelection.NONE, Sampling.SMOTE, CostSensitive.NONE);
-            evaluations.add(evaluationWithSMOTE);
-            printProbabilities(classifier, smoteTraining, testing, testing, acumeName + "_" + Sampling.SMOTE);
-
-            // Applicare oversampling senza selezione delle caratteristiche
-            Instances overTraining = new Instances(training);
             Resample resample = new Resample();
-            resample.setInputFormat(overTraining);
-            resample.setNoReplacement(false);
+            resample.setInputFormat(training);
+
+            if ((positiveCount + negativeCount) != 0)
+                resample.setSampleSizePercent(2.0*100.0*negativeCount/(positiveCount + negativeCount));
             resample.setSampleSizePercent(200);
 
             FilteredClassifier fcOver = new FilteredClassifier();
             fcOver.setClassifier(classifier);
             fcOver.setFilter(resample);
-            fcOver.buildClassifier(overTraining);
+            fcOver.buildClassifier(training);
 
             Evaluation overSamplingEval = new Evaluation(testing);
             overSamplingEval.evaluateModel(fcOver, testing);
             ClassifierEvaluation evaluationWithOverSampling = new ClassifierEvaluation(projectName, i, overSamplingEval, classifierName, FeatureSelection.NONE, Sampling.OVERSAMPLING, CostSensitive.NONE);
             evaluations.add(evaluationWithOverSampling);
-            printProbabilities(classifier, overTraining, testing, testing, acumeName + "_" + Sampling.OVERSAMPLING);
+            printProbabilities(fcOver, training, testing, testing, acumeName, Sampling.OVERSAMPLING.name());
 
-            // Applicare undersampling senza selezione delle caratteristiche
-            Instances underTraining = new Instances(training);
+            // UNDERSAMPLING
             SpreadSubsample spreadSubsample = new SpreadSubsample();
-            spreadSubsample.setOptions(new String[]{"-M", "1.0"}); // Bilancia le classi
+            spreadSubsample.setOptions(new String[]{"-M", "1.0"});
 
             FilteredClassifier fcUnder = new FilteredClassifier();
             fcUnder.setClassifier(classifier);
             fcUnder.setFilter(spreadSubsample);
-            fcUnder.buildClassifier(underTraining);
+            fcUnder.buildClassifier(training);
+
             Evaluation underSamplingEval = new Evaluation(testing);
             underSamplingEval.evaluateModel(fcUnder, testing);
 
             ClassifierEvaluation evaluationWithUnderSampling = new ClassifierEvaluation(projectName, i, underSamplingEval, classifierName, FeatureSelection.NONE, Sampling.UNDERSAMPLING, CostSensitive.NONE);
             evaluations.add(evaluationWithUnderSampling);
-            printProbabilities(classifier, overTraining, testing, testing, acumeName + "_" + Sampling.UNDERSAMPLING);
+            printProbabilities(fcUnder, training, testing, testing, acumeName, Sampling.UNDERSAMPLING.name());
 
-            // Applicare il classificatore cost-sensitive
+            // SMOTE
+            SMOTE smote = new SMOTE();
+            smote.setInputFormat(training);
+            if (negativeCount != 0)
+                smote.setPercentage(((negativeCount / positiveCount) * 100.0) - 100.0);
+
+            FilteredClassifier fcSmote = new FilteredClassifier();
+            fcSmote.setClassifier(classifier);
+            fcSmote.setFilter(smote);
+            fcSmote.buildClassifier(training);
+
+            Evaluation evalWithSMOTE = new Evaluation(testing);
+            evalWithSMOTE.evaluateModel(fcSmote, testing);
+            ClassifierEvaluation evaluationWithSMOTE = new ClassifierEvaluation(projectName, i, evalWithSMOTE, classifierName,
+                    FeatureSelection.NONE, Sampling.SMOTE, CostSensitive.NONE);
+            evaluations.add(evaluationWithSMOTE);
+            printProbabilities(fcSmote, training, testing, testing, acumeName, Sampling.SMOTE.name());
+
+            // COST SENSITIVE
             CostSensitiveClassifier c1 = new CostSensitiveClassifier();
             c1.setClassifier(classifier);
             c1.setCostMatrix(createCostMatrix(1, 10)); // Crea una matrice dei costi
@@ -217,7 +227,7 @@ public class WekaController {
             ClassifierEvaluation evaluationWithCostSensitive = new ClassifierEvaluation(projectName, i, ec1, classifierName, FeatureSelection.NONE, Sampling.NONE, CostSensitive.COST_SENSITIVE_CLASSIFIER);
             evaluationWithCostSensitive.setCost(1, 10);
             evaluations.add(evaluationWithCostSensitive);
-            printProbabilities(classifier, training, testing, testing, acumeName + "_" + CostSensitive.COST_SENSITIVE_CLASSIFIER);
+            printProbabilities(c1, training, testing, testing, acumeName, CostSensitive.COST_SENSITIVE_CLASSIFIER.name());
         }
     }
 
@@ -295,7 +305,8 @@ public class WekaController {
         }
     }
 
-    public static void printProbabilities(Classifier classifier, Instances training, Instances testing, Instances testingLoc, String name) throws Exception {
+    public static void printProbabilities(Classifier classifier, Instances training, Instances testing, Instances testingLoc, String path, String outName) throws Exception {
+        String name = path + "_" + outName;
         int index = 0;
         int numtesting = testing.numInstances();
         if (PRINT.equals("ALL")) {
