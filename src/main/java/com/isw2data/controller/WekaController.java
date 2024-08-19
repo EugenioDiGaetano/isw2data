@@ -107,7 +107,7 @@ public class WekaController {
                 attributeNameFsBestBld.append(", ").append(fsBestTraining.attribute(k).name());
             }
             String attributeNameFsBest = attributeNameFsBestBld.toString();
-            out.println("Attributi scelti da forwards: "+ attributeNameFsBest);
+            out.println("Attributi scelti da BestFirst: "+ attributeNameFsBest + " index: " + i);
 
             classifier.buildClassifier(fsBestTraining);
 
@@ -142,7 +142,7 @@ public class WekaController {
                 attributeNameFsGreedyStepwiseBld.append(", ").append(fsGreedyStepwiseTraining.attribute(k).name());
             }
             String attributeNameFsGreedyStepwise = attributeNameFsGreedyStepwiseBld.toString();
-            out.println("Attributi scelti da GreedyStepwise: "+ attributeNameFsGreedyStepwise);
+            out.println("Attributi scelti da GreedyStepwise: "+ attributeNameFsGreedyStepwise + " index: " + i);
 
             classifier.buildClassifier(fsGreedyStepwiseTraining);
             Evaluation evalWithFsGreedyStepwise = new Evaluation(fsGreedyStepwiseTraining);
