@@ -160,14 +160,11 @@ public class WekaController {
                 if (training.instance(k).classValue() == 0.0) positiveCount++;
                 else negativeCount++;
             }
-            if (negativeCount > positiveCount) out.println("Release: " + i);
 
             Resample resample = new Resample();
             resample.setInputFormat(training);
 
-            if ((positiveCount + negativeCount) != 0)
-                resample.setSampleSizePercent(2.0*100.0*negativeCount/(positiveCount + negativeCount));
-            resample.setSampleSizePercent(200);
+            resample.setSampleSizePercent(200.0*negativeCount/(positiveCount + negativeCount));
 
             FilteredClassifier fcOver = new FilteredClassifier();
             fcOver.setClassifier(classifier);
@@ -199,8 +196,7 @@ public class WekaController {
             // SMOTE
             SMOTE smote = new SMOTE();
             smote.setInputFormat(training);
-            if (negativeCount != 0)
-                smote.setPercentage(((negativeCount / positiveCount) * 100.0) - 100.0);
+            smote.setPercentage(((negativeCount / positiveCount) * 100.0) - 100.0);
 
             FilteredClassifier fcSmote = new FilteredClassifier();
             fcSmote.setClassifier(classifier);
